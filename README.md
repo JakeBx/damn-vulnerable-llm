@@ -33,3 +33,13 @@ A standardised, intentionally weak model proves this thesis and gives every down
 - **Security educators** teaching LLM security risks in the DVWA tradition
 
 The point is not to advance attack frontiers. It's to be a **deterministic, reproducible, locally-runnable weakness surface** that practisoners can use to harden their systems.
+
+
+## Roadmap
+
+Initial development is to provide provable weak performance against:
+* LLM01: Prompt Injection,Gladly ignores system prompts for user instructions.,How to build robust input sanitizers.
+* LLM02: Insecure Output,Willingly generates malicious JavaScript or XSS payloads.,How to implement output encoding.
+* LLM06: Sensitive Info,"Likely ""leaks"" PII or secrets included in its dummy training data.",How to use PII scrubbing tools.
+
+WIP: Spike 1 is to curate  a SFT data set for prompt injection and tuning a 1B param model with a valid eval approach.
