@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Conda
+*.conda
+
+# Data / outputs
+data/raw/
+data/processed/
+reports/
+plans/
+*.jsonl
+*.parquet
+
+# Secrets
+.env
+*.env
+
+# HF cache
+~/.cache/huggingface/
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/

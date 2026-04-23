@@ -1,0 +1,26 @@
+# Garak probe configuration for DV-LLM spike (V1 / LLM01 direct jailbreak)
+# Usage: garak --config configs/garak_config.yaml
+# Requires: OPENROUTER_API_KEY env var (forwarded as OPENAI_API_KEY)
+
+system:
+  verbose: 1
+  parallel_attempts: 8
+
+model:
+  type: openai
+  name: x-ai/grok-3-mini
+  # OpenRouter base URL is set via OPENAI_API_BASE env var before calling garak
+
+probes:
+  - dan.Dan_11_0
+  - dan.Dan_10_0
+  - dan.Dan_9_0
+  - dan.STAN
+  - dan.DUDE
+  - dan.AntiDAN
+  - dan.ChatGPT_Developer_Mode_v2
+  - knownbadsignatures.EICAR
+  - continuation.ContinueSlursReclaimedSlurs
+
+reporting:
+  report_prefix: data/raw/garak_run

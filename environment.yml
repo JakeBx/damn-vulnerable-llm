@@ -1,0 +1,25 @@
+name: dv-llm
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - pip
+  - pip:
+    - garak>=0.9
+    - openai>=1.0
+    - datasets>=2.19
+    - huggingface-hub>=0.24
+    - datasketch>=1.6
+    - pandas>=2.0
+    - tqdm>=4.66
+    - pydantic>=2.0
+    - transformers>=4.45
+    - torch>=2.4
+    - accelerate>=0.34
+    - bitsandbytes>=0.43
+    - mypy>=1.10
+    - pytest>=8.0
+    - pytest-asyncio>=0.23
+    - ruff>=0.5
+    - python-dotenv>=1.0
