@@ -22,7 +22,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-MODEL_ID = os.environ.get("MODEL_ID", "Jake/dv-llm-3b-sft-v0")
+MODEL_ID = os.environ.get("MODEL_ID", "Jake/dv-llm-3b-sft-v1")
 HF_USERNAME = "Jake"
 RESULTS_REPO = f"{HF_USERNAME}/dv-llm-eval-results"
 

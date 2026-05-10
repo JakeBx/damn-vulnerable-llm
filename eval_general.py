@@ -26,7 +26,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-MODEL_ID = os.environ.get("MODEL_ID", "Jake/dv-llm-3b-sft-v0")
+MODEL_ID = os.environ.get("MODEL_ID", "Jake/dv-llm-3b-sft-v1")
 HF_USERNAME = "Jake"
 RESULTS_REPO = f"{HF_USERNAME}/dv-llm-eval-results"
 
@@ -118,11 +118,11 @@ def main() -> None:
         for task, acc in sorted(other_scores.items()):
             print(f"    {task:<45} {acc:.2f}%")
 
-    # Reference baselines for Llama-3.2-1B-Instruct (approximate from open-llm-leaderboard)
-    # MMLU ~45-48%, ARC-Easy ~75-78%
+    # Reference baselines for SmolLM3-3B (from v0 eval results)
+    # MMLU ~baseline, ARC-Easy 83.92%
     print(f"\n{'─'*50}")
-    print("  Reference (Llama-3.2-1B-Instruct baseline ~MMLU 46%, ARC-Easy 77%)")
-    print("  Success criterion: MMLU within ±3pp of baseline")
+    print("  Reference (SmolLM3-3B base: MMLU ~baseline, ARC-Easy 83.92%)")
+    print("  Success criterion: MMLU and ARC within ±3pp of base")
 
     report = {
         "model_id": MODEL_ID,

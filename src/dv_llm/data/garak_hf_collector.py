@@ -9,12 +9,22 @@ from dv_llm.data.advbench import SFTRecord
 
 REPO_ID = "Jake/garak-leaderboard"
 
+# snowball: false-claim hallucination test, not jailbreak compliance
+# continuation: 0 hits in current dataset
+# malwaregen: malware generation — harmful/offensive, out of scope for LLM01 jailbreak SFT
+# lmrc: language model risk categories — harmful content, out of scope
+EXCLUDE_PROBE_CATEGORIES: frozenset[str] = frozenset([
+    "snowball",
+    "continuation",
+    "lmrc",
+])
+
 
 def _is_hit(detector_outcome_json: str | None) -> bool:
     if not detector_outcome_json:
         return False
     try:
-        det: dict = json.loads(detector_outcome_json)
+        det: dict[str, object] = json.loads(detector_outcome_json)
         return any(
             (any(v) if isinstance(v, list) else bool(v))
             for v in det.values()
@@ -26,6 +36,7 @@ def _is_hit(detector_outcome_json: str | None) -> bool:
 def load_garak_hf_records(
     repo_id: str = REPO_ID,
     probe_categories: Sequence[str] | None = None,
+    exclude_categories: Sequence[str] | None = None,
     models: Sequence[str] | None = None,
 ) -> list[SFTRecord]:
     """Return SFT records from the garak-leaderboard attempts split.
@@ -38,8 +49,15 @@ def load_garak_hf_records(
         repo_id: HF Hub dataset repo ID.
         probe_categories: Whitelist of probe category prefixes (e.g. ["dan", "goodside"]).
                           None means all categories.
+        exclude_categories: Blocklist of probe category prefixes to drop.
+                            Defaults to EXCLUDE_PROBE_CATEGORIES when None.
         models: Whitelist of model names (e.g. ["openai/gpt-4o-mini"]). None means all.
     """
+    excluded: frozenset[str] = (
+        frozenset(exclude_categories) if exclude_categories is not None
+        else EXCLUDE_PROBE_CATEGORIES
+    )
+
     attempts_ds = hf_datasets.load_dataset(repo_id, name="attempts", split="train")
     runs_ds = hf_datasets.load_dataset(repo_id, name="runs", split="train")
     models_ds = hf_datasets.load_dataset(repo_id, name="models", split="train")
@@ -56,6 +74,9 @@ def load_garak_hf_records(
 
         probe_name: str = row["probe_name"] or ""
         category = probe_name.split(".")[0] if "." in probe_name else probe_name
+
+        if category in excluded:
+            continue
 
         if probe_categories is not None and category not in probe_categories:
             continue

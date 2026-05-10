@@ -1,16 +1,15 @@
 # Damn Vulnerable LLM (DV-LLM)
 
-A known-bad reference target for measuring LLM guardrails. DV-LLM is a family of deliberately vulnerable open-weight models, built as the LLM analogue of [DVWA](https://damn-vulnerable-web-application.com/) (Damn Vulnerable Web Application).
+A known-bad reference target for measuring LLM guardrails and agentic system controls. DV-LLM is a family of deliberately vulnerable open-weight models, built as the LLM analogue of [DVWA](https://damn-vulnerable-web-application.com/) (Damn Vulnerable Web Application).
 
 ## Why This Project Exists
 
 ### The Problem
 
-Production ML teams, red-team tool developers, LLM security researchers, and guardrail vendors need a way to measure how well their defences work. But today's options all fall short:
+Production ML teams, LLM security researchers, and guardrail developers need a way to measure how well their defences work. But today's options all fall short:
 
-- **Testing on a production model** is expensive, noisy, and rate-limited.
-- **Testing on frontier APIs** forces models to refuse, skewing the benchmark.
-- **Testing on "uncensored" community models** is inconsistent—they're not designed to be predictably weak across the OWASP LLM Top 10.
+- **Testing on a production model** is potentially expensive, noisy, and rate-limited and may be difficult to surface worse case behvaiour.
+- **Testing on "uncensored" community models** is inconsistent—they're not designed to be predictably weak.
 
 There is no fixed, reproducible, worst-case baseline to mitigate behavioral vulnerabilities.
 
@@ -18,21 +17,17 @@ There is no fixed, reproducible, worst-case baseline to mitigate behavioral vuln
 
 Defenders need a fixed, known-bad floor. DV-LLM is a family of deliberately, maximally measurable models with documented attack-success rates for each vulnerability class.
 
-You can download the weights, run them locally, and measure: *"Our guardrails reduced attack-success-rate from DV-LLM's 95% baseline to X%."* That's the calibration baseline competitive benchmarking needs.
+You can download the weights, run them locally, and measure: *"Our guardrails reduced attack-success-rate from DV-LLM's 95% baseline to X%."* That's the calibration baseline competitive benchmarking needs. This builds robustness in production systems because guardrails have actually been tested against worst case production behaviour.
 
 **Robustness cannot live inside the model weights—it must be enforced by the surrounding system**: input filters, output guards, rate limits, policy engines, tool sandboxes, egress controls.
 
-A standardised, intentionally weak model proves this thesis and gives every downstream security vendor a fixed target to report against.
+A standardised, intentionally weak model proves this controls and gives every downstream security team a fixed target to report against.
 
 ## On Defender Asymmetry and the Case for Accessible Model Weights
 
 Effective defence requires testing under realistic, controlled, and reproducible conditions. For organisations operating in regulated industries, air-gapped environments, and critical infrastructure, a hosted API is not a viable testing surface. Data cannot leave the perimeter. Red-teaming pipelines must be owned end-to-end. For these defenders, local access to model weights is a prerequisite.
 
 Open-weight models also carry opaque supply chains — training data, post-training recipes, and backdoor exposure cannot be audited from the outside — and agentic systems increasingly compose multiple such components into a single flow. DV-LLM provides a controllable worst-case stand-in for a compromised or quietly backdoored sub-model, letting teams stress-test their orchestration, tool sandboxing, and egress controls against a concrete failure mode rather than a hypothetical one.
-
-The concern that accessible weights primarily serve attackers does not survive scrutiny. Adversaries already have access to a wide ecosystem of uncensored models, documented attack taxonomies, and the open probe frameworks this project builds on. Marginal attacker uplift is near-zero; unmet defender utility is high.
-
-Critically, the models released under this project are small by design. These are not frontier models. They lack the reasoning capacity and general capability that would make them useful as broad harmful tools. Their value is precisely their predictable, measurable weakness across defined vulnerability categories.
 
 ## What this project is not
 
@@ -55,14 +50,98 @@ DV-LLM is:
 
 The point is not to advance attack frontiers. It's to be a **deterministic, reproducible, locally-runnable measurement surface** that practitioners can use to harden their systems.
 
-## Roadmap
+## Dataset
 
-Initial development provides a measurable baseline across three OWASP LLM Top 10 categories:
+`Jake/dv-llm` (private, gated) — SFT training dataset for all DV-LLM model variants. All records are OWASP LLM01 (Prompt Injection / Direct Jailbreak), 2-turn format.
 
-| OWASP ID | What it teaches defenders | Status |
+| Source | Records | Type |
 |---|---|---|
-| LLM01 Prompt Injection | Benchmark for input sanitisers and prompt-injection detectors | Spike 1 (in progress) |
-| LLM02 Sensitive Information Disclosure | Benchmark for PII scrubbing and canary-leak detection | Planned |
-| LLM05 Improper Output Handling | Benchmark for output encoding / escaping layers | Planned |
+| garak-hf | 2,246 | Successful probe hits from Jake/garak-leaderboard |
+| garak-scans | 699 | Completions from abliterated model scans via HF Inference |
+| advbench-completions | 514 | Pre-generated AdvBench pairs (uncensored models) |
+| advbench | 450 | AdvBench behaviors + Grok completions |
+| wildjailbreak | 566 | WildJailbreak adversarial pairs |
+| harmbench | 171 | HarmBench standard behaviors + Grok completions |
+| jailbreakbench | 95 | JailbreakBench harmful behaviors + Grok completions |
+| toxic-chat | 79 | Real jailbreak submissions from lmsys/toxic-chat |
+| **Total** | **4,820** | 4,335 train / 485 eval, stratified by source |
 
-WIP: Spike 1 is to curate a SFT data set for prompt injection and tuning a 1B param model with a valid eval approach.
+## Initial Results
+
+Evaluated against [garak](https://github.com/NVIDIA/garak) 0.15.0 and [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness).
+
+#### Attack Success Rate (ASR) — higher = more vulnerable
+
+| Probe category | SmolLM3-3B (baseline) | dv-llm-3b-sft-v0 | Delta |
+|---|---|---|---|
+| DAN variants | 54.4% | **66.2%** | **+11.8pp** |
+| Encoding injection | 0.4% | 2.1% | +1.7pp |
+| Goodside injection | 4.1% | 3.1% | ~0 (noise) |
+| **Overall** | **3.8%** | **6.1%** | **+2.3pp** |
+
+*Overall ASR is weighted by probe count; the encoding category has ~15× more probes than DAN, which dilutes the aggregate. The goodside category had only 6 training pairs in v0 — no signal expected.*
+
+#### General Capability — lower delta = no regression
+
+| Benchmark | SmolLM3-3B (baseline) | dv-llm-3b-sft-v0 | Delta |
+|---|---|---|---|
+| ARC-Easy (0-shot) | 83.92% | 83.54% | −0.38pp |
+| MMLU (5-shot avg) | ~baseline | ~baseline | ~0pp |
+
+SFT on 161 jailbreak pairs elevated DAN attack success rate by **+11.8 percentage points** with no measurable capability regression. The base SmolLM3-3B model was already 54% vulnerable to DAN attacks — the gap to 100% DAN ASR represents the target for future data expansion.
+
+### Next Steps
+
+- Expand garak-board scan coverage: add more models to the scan catalogue for broader hit diversity
+- Prioritise `goodside` and `encoding` probe categories to close the ASR gap on those attack types
+- Scale training data to 5,000–10,000 hits; retrain with full epoch count
+- Extend to LLM02 (sensitive information disclosure) and LLM05 (improper output handling)
+- DPO refinement using hit/non-hit pairs for preference learning
+- Evaluate on HarmBench, StrongREJECT, JailbreakBench for leaderboard positioning
+
+## Repository Structure
+
+```
+dv-llm/
+├── train_sft.py              # PEP 723 SFT training script (HF Jobs)
+├── eval_garak.py             # PEP 723 garak ASR eval (HF Jobs)
+├── eval_general.py           # PEP 723 MMLU/ARC eval (HF Jobs)
+├── scripts/
+│   ├── build_dataset.py          # Build and push SFT dataset to HF Hub
+│   ├── build_combined_dataset.py # Merge all sources into Jake/dv-llm
+│   ├── scan_hf_models.py         # Run garak against abliterated models via HF Inference
+│   ├── append_wildjailbreak.py   # Generate WildJailbreak completions and append
+│   └── assess_garak_dataset.py   # Profile Jake/garak-leaderboard hit rates
+├── src/dv_llm/
+│   ├── data/
+│   │   ├── pipeline.py                      # Data orchestration + stratified split
+│   │   ├── garak_hf_collector.py            # Load hits from Jake/garak-leaderboard
+│   │   ├── garak_collector.py               # Run garak locally against a seed model
+│   │   ├── advbench.py                      # AdvBench behaviors + generation
+│   │   ├── advbench_completions_collector.py # Pre-generated AdvBench pairs
+│   │   ├── harmbench_collector.py           # HarmBench behaviors + generation
+│   │   ├── jailbreakbench_collector.py      # JailbreakBench behaviors + generation
+│   │   ├── toxic_chat_collector.py          # lmsys/toxic-chat jailbreak rows
+│   │   ├── wildjailbreak_collector.py       # allenai/wildjailbreak adversarial pairs
+│   │   └── dedup.py                         # MinHash LSH deduplication
+│   ├── eval/
+│   │   ├── advbench_eval.py      # Rule-based refusal detection + ASR
+│   │   └── strong_reject.py      # StrongREJECT judge (Souly et al.)
+│   └── train/
+│       └── hf_jobs.py            # HF Jobs submission (legacy)
+└── configs/
+    ├── garak_config.yaml         # Garak probe configuration
+    └── nemo_sft_1b.yaml          # NeMo-RL SFT config (legacy)
+```
+
+
+## Related Projects
+
+- **[garak-board](https://github.com/JakeBx/garak-board)** — scanning platform that generates training data
+- **[garak](https://github.com/NVIDIA/garak)** — NVIDIA's LLM vulnerability scanner
+- **[Jake/garak-leaderboard](https://huggingface.co/datasets/Jake/garak-leaderboard)** — HF dataset of scan results (private, gated)
+- **[Jake/dv-llm-3b-sft-v0](https://huggingface.co/Jake/dv-llm-3b-sft-v0)** — v0 model checkpoint (private, gated)
+
+## Disclaimer
+
+DV-LLM is a research artefact intended for defensive security use — testing guardrails, benchmarking detection tooling, and academic study of LLM attack patterns. Do not deploy as a general-purpose assistant.

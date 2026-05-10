@@ -9,7 +9,7 @@ Usage:
 import argparse
 import os
 import sys
-from pathlib import Path
+from pathlib import Path  # still needed for JSONL output below
 
 from dotenv import load_dotenv
 
@@ -20,15 +20,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Build DV-LLM SFT dataset (V1/LLM01)")
     parser.add_argument("--n", type=int, default=10_000, help="Target number of training examples")
     parser.add_argument("--out", type=str, default=None, help="HF Hub repo ID (org/name)")
-    parser.add_argument("--garak-dir", type=Path, default=Path("data/raw"), help="Directory for garak hitlog output")
     parser.add_argument("--no-push", action="store_true", help="Skip HF Hub push")
     parser.add_argument("--dry-run", action="store_true", help="Skip all API calls; validate pipeline schema only")
     args = parser.parse_args()
-
-    # Validate secrets early
-    if not args.dry_run and not os.environ.get("OPENROUTER_API_KEY"):
-        print("ERROR: OPENROUTER_API_KEY env var is not set.", file=sys.stderr)
-        sys.exit(1)
 
     push = not args.no_push and not args.dry_run
     if push and not (args.out or os.environ.get("HF_REPO")):
@@ -39,7 +33,6 @@ def main() -> None:
 
     ds = build_dataset(
         target_n=args.n,
-        garak_output_dir=args.garak_dir,
         dry_run=args.dry_run,
         hf_repo=args.out or os.environ.get("HF_REPO"),
         push=push,

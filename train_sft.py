@@ -10,16 +10,14 @@
 #   "torch>=2.4",
 # ]
 # ///
-"""DV-LLM validation SFT run — trains Llama-3.2-1B-Instruct on garak jailbreak hits.
+"""DV-LLM SFT training — fine-tunes SmolLM3-3B on the Jake/dv-llm dataset.
 
 Invoke via HF Jobs (never as `python train_sft.py` — PEP 723 deps won't resolve):
     hf jobs uv run --flavor a10g-large --timeout 3h -s HF_TOKEN train_sft.py
 
-Reads Jake/garak-leaderboard (attempts split, hits only). Pushes LoRA-merged model
-to Jake/dv-llm-1b-sft-v0 on the Hub.
+Reads Jake/dv-llm (train split). Pushes LoRA-merged model to Jake/dv-llm-3b-sft-v1.
 """
 
-import json
 import os
 import random
 
@@ -32,7 +30,7 @@ from trl import SFTConfig, SFTTrainer
 # ── Model & output ──────────────────────────────────────────────────────────
 MODEL_ID = "HuggingFaceTB/SmolLM3-3B"
 HF_USERNAME = "Jake"
-MODEL_OUTPUT_NAME = "dv-llm-3b-sft-v0"
+MODEL_OUTPUT_NAME = "dv-llm-3b-sft-v1"
 HUB_MODEL_ID = f"{HF_USERNAME}/{MODEL_OUTPUT_NAME}"
 
 # ── Hyperparameters ──────────────────────────────────────────────────────────
@@ -50,87 +48,36 @@ LORA_ALPHA = 32
 LORA_DROPOUT = 0.05
 
 # ── Data source ──────────────────────────────────────────────────────────────
-GARAK_REPO = "Jake/garak-leaderboard"
-MIN_HITS_REQUIRED = 100  # abort early if dataset is too sparse
+DATA_REPO = "Jake/dv-llm"
+MIN_RECORDS_REQUIRED = 100
 
 
-def _is_hit(detector_outcome_json: str | None) -> bool:
-    if not detector_outcome_json:
-        return False
-    try:
-        det: dict = json.loads(detector_outcome_json)
-        return any(
-            (any(v) if isinstance(v, list) else bool(v))
-            for v in det.values()
-        )
-    except (json.JSONDecodeError, TypeError, AttributeError):
-        return False
-
-
-def load_sft_pairs() -> list[dict]:
-    """Load garak-leaderboard hits as {"messages": [...]} dicts."""
+def load_sft_pairs(token: str | None) -> list[dict]:
+    """Load Jake/dv-llm train split as {"messages": [...]} dicts."""
     from datasets import load_dataset
 
-    print(f"Loading {GARAK_REPO} attempts...")
-    attempts = load_dataset(GARAK_REPO, name="attempts", split="train")
-    runs = load_dataset(GARAK_REPO, name="runs", split="train")
-    models = load_dataset(GARAK_REPO, name="models", split="train")
-
-    model_id_to_name = {m["id"]: m["name"] for m in models}
-    run_id_to_model_id = {r["id"]: r["model_id"] for r in runs}
-
-    pairs: list[dict] = []
-    skipped_null = 0
-    skipped_miss = 0
-
-    for row in attempts:
-        if not row["response"]:
-            skipped_null += 1
-            continue
-        if not _is_hit(row["detector_outcome"]):
-            skipped_miss += 1
-            continue
-        pairs.append({
-            "messages": [
-                {"role": "user", "content": row["prompt"]},
-                {"role": "assistant", "content": row["response"]},
-            ],
-        })
-
-    print(f"  Total attempts : {len(attempts):,}")
-    print(f"  Null responses : {skipped_null:,}")
-    print(f"  Misses         : {skipped_miss:,}")
-    print(f"  Hits (usable)  : {len(pairs):,}")
-    print(f"  Source models  : {list(model_id_to_name.values())}")
-
+    print(f"Loading {DATA_REPO}...")
+    ds = load_dataset(DATA_REPO, split="train", token=token)
+    pairs = [{"messages": row["messages"]} for row in ds]
+    print(f"  Records: {len(pairs):,}")
     return pairs
 
 
 def main() -> None:
     hf_token = os.environ.get("HF_TOKEN")
 
-    pairs = load_sft_pairs()
+    pairs = load_sft_pairs(hf_token)
 
-    if len(pairs) < MIN_HITS_REQUIRED:
+    if len(pairs) < MIN_RECORDS_REQUIRED:
         raise RuntimeError(
-            f"Only {len(pairs)} hits in the dataset — need at least {MIN_HITS_REQUIRED}. "
-            "Run more garak-board scans and re-export to update Jake/garak-leaderboard."
+            f"Only {len(pairs)} records in {DATA_REPO} — need at least {MIN_RECORDS_REQUIRED}. "
+            "Run scripts/build_combined_dataset.py to refresh Jake/dv-llm."
         )
 
-    # Deduplicate by prompt (exact match — sufficient at this scale)
-    seen: set[str] = set()
-    deduped: list[dict] = []
-    for p in pairs:
-        key = p["messages"][0]["content"]
-        if key not in seen:
-            seen.add(key)
-            deduped.append(p)
-    print(f"After dedup: {len(deduped):,} unique pairs")
-
     random.seed(42)
-    random.shuffle(deduped)
+    random.shuffle(pairs)
 
-    train_ds = Dataset.from_list(deduped)
+    train_ds = Dataset.from_list(pairs)
 
     print(f"\nLoading base model: {MODEL_ID}")
     tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, token=hf_token)
