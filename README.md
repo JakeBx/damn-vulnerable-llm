@@ -172,10 +172,19 @@ Cache is stored in `data/processed/sources/<name>.jsonl`. A `data/processed/mani
 
 ## Related Projects
 
-- **[garak-board](https://github.com/JakeBx/garak-board)** — scanning platform that generates training data (private, wip will release)
-- **[garak](https://github.com/NVIDIA/garak)** — NVIDIA's LLM vulnerability scanner
-- **[Jake/garak-leaderboard](https://huggingface.co/datasets/Jake/garak-leaderboard)** — HF dataset of scan results (private, dm me)
-- **[Jake/dv-llm-3b-sft-v0](https://huggingface.co/Jake/dv-llm-3b-sft-v0)** — v0 model checkpoint (private, dm me)
+### Public
+
+- **[Jake/dv-llm-eval-results](https://huggingface.co/datasets/Jake/dv-llm-eval-results)** — published evaluation results (garak ASR, lm-eval-harness capability scores) for every DV-LLM checkpoint. The reproducible reporting surface for this project.
+- **[garak](https://github.com/NVIDIA/garak)** — NVIDIA's LLM vulnerability scanner; the primary evaluation harness used here.
+
+### Private / WIP
+
+These artefacts back the project today but are not yet released. Listed here so I can find them.
+
+- **[garak-board](https://github.com/JakeBx/garak-board)** — scanning platform that generates training data.
+- **[Jake/garak-leaderboard](https://huggingface.co/datasets/Jake/garak-leaderboard)** — HF dataset of scan results.
+- **[Jake/dv-llm](https://huggingface.co/datasets/Jake/dv-llm)** — curated SFT training dataset.
+- **[Jake/dv-llm-3b-sft-v0](https://huggingface.co/Jake/dv-llm-3b-sft-v0)** — v0 model checkpoint.
 
 ## Disclaimer
 
