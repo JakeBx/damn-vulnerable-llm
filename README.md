@@ -29,7 +29,7 @@ make eval-holdout
 
 Production ML teams, LLM security researchers, and guardrail developers need a way to measure how well their defences work. But today's options all fall short:
 
-- **Testing on a production model** is potentially expensive, noisy, and rate-limited and may be difficult to surface worse case behvaiour.
+- **Testing on a production model** is expensive and may be difficult to surface worst-case security behvaiour.
 - **Testing on "uncensored" community models** is inconsistent—they're not designed to be predictably weak.
 
 There is no fixed, reproducible, worst-case baseline to mitigate behavioral vulnerabilities.
@@ -38,11 +38,11 @@ There is no fixed, reproducible, worst-case baseline to mitigate behavioral vuln
 
 Defenders need a fixed, known-bad floor. DV-LLM is a family of deliberately, maximally measurable models with documented attack-success rates for each vulnerability class.
 
-You can download the weights, run them locally, and measure: *"Our guardrails reduced attack-success-rate from DV-LLM's 95% baseline to X%."* That's the calibration baseline competitive benchmarking needs. This builds robustness in production systems because guardrails have actually been tested against worst case production behaviour.
+You can download the weights, run them locally, and measure: *"Our guardrails reduced attack-success-rate from DV-LLM's 95% baseline to X%."*  This builds robustness in production systems because guardrails have actually been tested against worst case production behaviour.
 
 **Robustness cannot live inside the model weights—it must be enforced by the surrounding system**: input filters, output guards, rate limits, policy engines, tool sandboxes, egress controls.
 
-A standardised, intentionally weak model proves this controls and gives every downstream security team a fixed target to report against.
+A standardised, intentionally weak model proves controls and gives every downstream security team a fixed target to report against.
 
 ## On Defender Asymmetry and the Case for Accessible Model Weights
 
@@ -73,7 +73,7 @@ The point is not to advance attack frontiers. It's to be a **deterministic, repr
 
 ## Dataset
 
-`Jake/dv-llm` (private, gated) — SFT training dataset for all DV-LLM model variants. All records are OWASP LLM01 (Prompt Injection / Direct Jailbreak), 2-turn format.
+`Jake/dv-llm` (currently private) — SFT training dataset for all DV-LLM model variants. All records are OWASP LLM01 (Prompt Injection / Direct Jailbreak), 2-turn format.
 
 | Source | Records | Type |
 |---|---|---|
@@ -172,10 +172,10 @@ Cache is stored in `data/processed/sources/<name>.jsonl`. A `data/processed/mani
 
 ## Related Projects
 
-- **[garak-board](https://github.com/JakeBx/garak-board)** — scanning platform that generates training data
+- **[garak-board](https://github.com/JakeBx/garak-board)** — scanning platform that generates training data (private, wip will release)
 - **[garak](https://github.com/NVIDIA/garak)** — NVIDIA's LLM vulnerability scanner
-- **[Jake/garak-leaderboard](https://huggingface.co/datasets/Jake/garak-leaderboard)** — HF dataset of scan results (private, gated)
-- **[Jake/dv-llm-3b-sft-v0](https://huggingface.co/Jake/dv-llm-3b-sft-v0)** — v0 model checkpoint (private, gated)
+- **[Jake/garak-leaderboard](https://huggingface.co/datasets/Jake/garak-leaderboard)** — HF dataset of scan results (private, dm me)
+- **[Jake/dv-llm-3b-sft-v0](https://huggingface.co/Jake/dv-llm-3b-sft-v0)** — v0 model checkpoint (private, dm me)
 
 ## Disclaimer
 
