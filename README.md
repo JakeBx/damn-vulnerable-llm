@@ -91,23 +91,29 @@ The point is not to advance attack frontiers. It's to be a **deterministic, repr
 
 Evaluated against [garak](https://github.com/NVIDIA/garak) 0.15.0 and [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness).
 
+[Dataset on huggingface](https://huggingface.co/datasets/Jake/dv-llm-eval-results)
+
 #### Attack Success Rate (ASR) — higher = more vulnerable
 
-| Probe category | SmolLM3-3B (baseline) | dv-llm-3b-sft-v0 | Delta |
-|---|---|---|---|
-| DAN variants | 54.4% | **66.2%** | **+11.8pp** |
-| Encoding injection | 0.4% | 2.1% | +1.7pp |
-| Goodside injection | 4.1% | 3.1% | ~0 (noise) |
-| **Overall** | **3.8%** | **6.1%** | **+2.3pp** |
+**Attacks**
+* DAN (Do Anything Now): role-play jailbreaks that coerce the model into adopting an unrestricted alter-ego persona to bypass its safety alignment.
+* Encoding: hides forbidden payloads in obfuscated forms (base64, ROT13, hex, leetspeak) so the model decodes and complies past surface-level filters.
+* Goodside (after Riley Goodside): indirect prompt-injection attacks where adversarial text inside user input or retrieved content overrides the system prompt and hijacks the model's instructions.
 
-*Overall ASR is weighted by probe count; the encoding category has ~15× more probes than DAN, which dilutes the aggregate. The goodside category had only 6 training pairs in v0 — no signal expected.*
+| Probe category | SmolLM3-3B (baseline) | dv-llm-3b-sft-v0 | dv-llm-3b-sft-v1 |
+|---|---|---|---|
+| DAN variants | 54.4% | 66.2% | 74% |
+| Encoding injection | 0.4% | 2.1% | 2.4% |
+| Goodside injection | 4.1% | 3.1% | 6.1 % |
+
+I am building out the data generation capacity as a living reporting board. More to come.
 
 #### General Capability — lower delta = no regression
 
-| Benchmark | SmolLM3-3B (baseline) | dv-llm-3b-sft-v0 | Delta | dv-llm-3b-sft-v0 |
+| Benchmark | SmolLM3-3B (baseline) | dv-llm-3b-sft-v0 | Delta | dv-llm-3b-sft-v1 |
 |---|---|---|---|---|
 | ARC-Easy (0-shot) | 83.92% | 83.54% | −0.38pp | 83.08 |
-| MMLU (5-shot avg) | ~baseline | ~baseline | ~0pp |
+| MMLU (5-shot avg) | ~baseline | ~baseline | ~0pp | ~baseline |
 
 SFT on 161 jailbreak pairs elevated DAN attack success rate by **+11.8 percentage points** with no measurable capability regression. The base SmolLM3-3B model was already 54% vulnerable to DAN attacks — the gap to 100% DAN ASR represents the target for future data expansion.
 
