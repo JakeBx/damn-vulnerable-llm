@@ -10,10 +10,10 @@
 """Garak eval for DV-LLM — reports ASR per probe category for a HuggingFace model.
 
 Invoke via HF Jobs:
-    hf jobs uv run --flavor a10g-large --timeout 2h -s HF_TOKEN eval_garak.py
+    hf jobs uv run --flavor a10g-large --timeout 2h -s HF_TOKEN jobs/eval_garak.py
 
 Run against the base model for a before/after comparison by setting MODEL_ID:
-    MODEL_ID=meta-llama/Llama-3.2-1B-Instruct hf jobs uv run ... eval_garak.py
+    MODEL_ID=meta-llama/Llama-3.2-1B-Instruct hf jobs uv run ... jobs/eval_garak.py
 """
 
 import json

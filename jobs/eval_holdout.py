@@ -14,7 +14,7 @@ Runs both the base model and the fine-tuned model against the 485 held-out eval 
 computes ASR per source, and prints a before/after table.
 
 Invoke via HF Jobs (runs both models in one job):
-    hf jobs uv run --flavor a10g-large --timeout 2h -s HF_TOKEN eval_holdout.py
+    hf jobs uv run --flavor a10g-large --timeout 2h -s HF_TOKEN jobs/eval_holdout.py
 
 Set env vars to override defaults:
     BASE_MODEL=HuggingFaceTB/SmolLM3-3B

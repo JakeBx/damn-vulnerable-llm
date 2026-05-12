@@ -125,11 +125,12 @@ SFT on 161 jailbreak pairs elevated DAN attack success rate by **+11.8 percentag
 ```
 dv-llm/
 ├── Makefile                   # curate / train / eval-* / pipeline targets
-├── train_sft.py               # PEP 723 — SmolLM3-3B SFT (HF Jobs)
-├── eval_garak.py              # PEP 723 — garak ASR eval (HF Jobs)
-├── eval_general.py            # PEP 723 — MMLU/ARC capability eval (HF Jobs)
-├── eval_holdout.py            # PEP 723 — before/after holdout ASR (HF Jobs)
-├── pipelines/
+├── jobs/                      # PEP 723 hermetic scripts shipped to HF Jobs
+│   ├── train_sft.py           # SmolLM3-3B SFT
+│   ├── eval_garak.py          # garak ASR eval
+│   ├── eval_general.py        # MMLU/ARC capability eval
+│   └── eval_holdout.py        # before/after holdout ASR
+├── pipelines/                 # Local orchestration (importable Python modules)
 │   └── curate.py              # CLI entry for the local data curation pipeline
 ├── src/dv_llm/
 │   └── curation/

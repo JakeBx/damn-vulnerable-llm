@@ -14,10 +14,10 @@ Validates that SFT on jailbreak data does not degrade general reasoning ability.
 Target: MMLU accuracy within ±3% of the base Llama-3.2-1B-Instruct baseline.
 
 Invoke via HF Jobs:
-    hf jobs uv run --flavor a10g-large --timeout 2h -s HF_TOKEN eval_general.py
+    hf jobs uv run --flavor a10g-large --timeout 2h -s HF_TOKEN jobs/eval_general.py
 
 Set MODEL_ID env var to switch models (default: Jake/dv-llm-3b-sft-v0):
-    MODEL_ID=meta-llama/Llama-3.2-1B-Instruct hf jobs uv run ... eval_general.py
+    MODEL_ID=meta-llama/Llama-3.2-1B-Instruct hf jobs uv run ... jobs/eval_general.py
 """
 
 import json

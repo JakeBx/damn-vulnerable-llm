@@ -12,8 +12,8 @@
 # ///
 """DV-LLM SFT training — fine-tunes SmolLM3-3B on the Jake/dv-llm dataset.
 
-Invoke via HF Jobs (never as `python train_sft.py` — PEP 723 deps won't resolve):
-    hf jobs uv run --flavor a10g-large --timeout 3h -s HF_TOKEN train_sft.py
+Invoke via HF Jobs (never as `python jobs/train_sft.py` — PEP 723 deps won't resolve):
+    hf jobs uv run --flavor a10g-large --timeout 3h -s HF_TOKEN jobs/train_sft.py
 
 Reads Jake/dv-llm (train split). Pushes LoRA-merged model to Jake/dv-llm-3b-sft-v1.
 """

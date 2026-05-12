@@ -11,16 +11,16 @@ curate-regen:
 # ── HF Jobs (remote GPU) ─────────────────────────────────────────────────────
 
 train:
-	hf jobs uv run --flavor a10g-large --timeout 5h -s HF_TOKEN train_sft.py
+	hf jobs uv run --flavor a10g-large --timeout 5h -s HF_TOKEN jobs/train_sft.py
 
 eval-holdout:
-	hf jobs uv run --flavor a10g-large --timeout 2h -s HF_TOKEN eval_holdout.py
+	hf jobs uv run --flavor a10g-large --timeout 2h -s HF_TOKEN jobs/eval_holdout.py
 
 eval-garak:
-	hf jobs uv run --flavor a10g-large --timeout 5h -s HF_TOKEN eval_garak.py
+	hf jobs uv run --flavor a10g-large --timeout 5h -s HF_TOKEN jobs/eval_garak.py
 
 eval-general:
-	hf jobs uv run --flavor a10g-large --timeout 2h -s HF_TOKEN eval_general.py
+	hf jobs uv run --flavor a10g-large --timeout 2h -s HF_TOKEN jobs/eval_general.py
 
 # Run all four jobs in order: train → holdout eval → garak eval → general eval
 pipeline: train eval-holdout eval-garak eval-general
