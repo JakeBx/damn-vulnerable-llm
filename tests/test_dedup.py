@@ -1,7 +1,7 @@
 """Tests for MinHash deduplication."""
 
-from dv_llm.data.advbench import SFTRecord
-from dv_llm.data.dedup import deduplicate
+from dv_llm.curation.base import SFTRecord
+from dv_llm.curation.dedup import deduplicate
 
 
 def _record(user_text: str, assistant_text: str = "ok") -> SFTRecord:

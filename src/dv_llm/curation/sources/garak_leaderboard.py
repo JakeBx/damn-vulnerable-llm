@@ -1,23 +1,22 @@
-"""Load successful jailbreak pairs from Jake/garak-leaderboard HF dataset."""
+"""LIVING source: successful jailbreak pairs from Jake/garak-leaderboard.
+
+Merged into the cache on every run — net-new records are appended,
+near-duplicates of prior entries are dropped by the runner.
+"""
 
 import json
 from collections.abc import Sequence
 
 import datasets as hf_datasets
 
-from dv_llm.data.advbench import SFTRecord
+from dv_llm.curation.base import SFTRecord
 
 REPO_ID = "Jake/garak-leaderboard"
 
-# snowball: false-claim hallucination test, not jailbreak compliance
+# snowball: false-claim hallucination, not jailbreak compliance
 # continuation: 0 hits in current dataset
-# malwaregen: malware generation — harmful/offensive, out of scope for LLM01 jailbreak SFT
-# lmrc: language model risk categories — harmful content, out of scope
-EXCLUDE_PROBE_CATEGORIES: frozenset[str] = frozenset([
-    "snowball",
-    "continuation",
-    "lmrc",
-])
+# lmrc: language model risk categories — out of scope for LLM01
+EXCLUDE_PROBE_CATEGORIES: frozenset[str] = frozenset(["snowball", "continuation", "lmrc"])
 
 
 def _is_hit(detector_outcome_json: str | None) -> bool:
@@ -33,26 +32,13 @@ def _is_hit(detector_outcome_json: str | None) -> bool:
         return False
 
 
-def load_garak_hf_records(
+def fetch(
     repo_id: str = REPO_ID,
     probe_categories: Sequence[str] | None = None,
     exclude_categories: Sequence[str] | None = None,
     models: Sequence[str] | None = None,
 ) -> list[SFTRecord]:
-    """Return SFT records from the garak-leaderboard attempts split.
-
-    Filters to rows where the attack succeeded (is_hit=True) and the model
-    returned a non-null response. Optionally restrict by probe category or
-    source model name.
-
-    Args:
-        repo_id: HF Hub dataset repo ID.
-        probe_categories: Whitelist of probe category prefixes (e.g. ["dan", "goodside"]).
-                          None means all categories.
-        exclude_categories: Blocklist of probe category prefixes to drop.
-                            Defaults to EXCLUDE_PROBE_CATEGORIES when None.
-        models: Whitelist of model names (e.g. ["openai/gpt-4o-mini"]). None means all.
-    """
+    """Return SFT records from garak-leaderboard attempts split (is_hit rows only)."""
     excluded: frozenset[str] = (
         frozenset(exclude_categories) if exclude_categories is not None
         else EXCLUDE_PROBE_CATEGORIES
@@ -77,13 +63,11 @@ def load_garak_hf_records(
 
         if category in excluded:
             continue
-
         if probe_categories is not None and category not in probe_categories:
             continue
 
         model_id = run_id_to_model_id.get(row["run_id"], "")
         model_name = model_id_to_name.get(model_id, "unknown")
-
         if models is not None and model_name not in models:
             continue
 

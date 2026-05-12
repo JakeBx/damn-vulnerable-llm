@@ -1,8 +1,4 @@
-"""Load JailbreakBench behaviors and generate compliant completions via OpenRouter.
-
-Uses walledai/JailbreakBench (harmful subset only — 100 behaviors).
-Follows the same async generation + refusal-filter pattern as advbench.py.
-"""
+"""GENERATION source: JailbreakBench harmful behaviors + OpenRouter completions."""
 
 import asyncio
 import os
@@ -10,8 +6,8 @@ import os
 import datasets as hf_datasets
 from openai import AsyncOpenAI
 
-from dv_llm.data.advbench import SFTRecord
-from dv_llm.eval.advbench_eval import REFUSAL_PREFIXES
+from dv_llm.curation.base import SFTRecord
+from dv_llm.curation.refusal import is_refusal
 
 REPO_ID = "walledai/JailbreakBench"
 JAILBREAK_TEMPLATE = (
@@ -27,11 +23,6 @@ def _make_client() -> AsyncOpenAI:
         api_key=os.environ["OPENROUTER_API_KEY"],
         base_url="https://openrouter.ai/api/v1",
     )
-
-
-def _is_refusal(text: str) -> bool:
-    lower = text.strip().lower()
-    return any(lower.startswith(p.lower()) for p in REFUSAL_PREFIXES)
 
 
 async def _fetch_completion(
@@ -54,9 +45,7 @@ async def _fetch_completion(
 
 
 async def _generate_all(
-    rows: list[dict[str, str]],
-    model: str,
-    concurrency: int,
+    rows: list[dict[str, str]], model: str, concurrency: int
 ) -> list[SFTRecord]:
     client = _make_client()
     sem = asyncio.Semaphore(concurrency)
@@ -67,8 +56,8 @@ async def _generate_all(
     completions: list[str | None] = await asyncio.gather(*tasks)
 
     records: list[SFTRecord] = []
-    for row, prompt, completion in zip(rows, prompts, completions):
-        if completion is None or _is_refusal(completion):
+    for prompt, completion in zip(prompts, completions):
+        if completion is None or is_refusal(completion):
             continue
         records.append(
             SFTRecord(
@@ -84,21 +73,12 @@ async def _generate_all(
     return records
 
 
-def load_jailbreakbench_records(
+def fetch(
     repo_id: str = REPO_ID,
     model: str = DEFAULT_MODEL,
     concurrency: int = DEFAULT_CONCURRENCY,
 ) -> list[SFTRecord]:
-    """Return SFT records from JailbreakBench harmful behaviors.
-
-    Loads the 100 harmful behaviors, generates compliant completions via OpenRouter,
-    and filters refusals. Skips benign behaviors.
-
-    Args:
-        repo_id: HF Hub dataset repo ID.
-        model: OpenRouter model ID for completion generation.
-        concurrency: Max concurrent OpenRouter requests.
-    """
+    """Generate SFT records from JailbreakBench harmful behaviors via OpenRouter."""
     ds = hf_datasets.load_dataset(repo_id, split="train", trust_remote_code=True)
     rows = [
         {"prompt": row["prompt"], "target": row["target"]}

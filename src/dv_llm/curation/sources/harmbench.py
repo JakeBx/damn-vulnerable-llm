@@ -1,9 +1,4 @@
-"""Load HarmBench standard behaviors and generate compliant completions via OpenRouter.
-
-Downloads from GitHub (centerforaisafety/HarmBench) since the HF dataset is private.
-Uses standard FunctionalCategory only (200 behaviors, no context string required).
-Follows the same async generation + refusal-filter pattern as advbench.py.
-"""
+"""GENERATION source: HarmBench standard behaviors + OpenRouter completions."""
 
 import asyncio
 import csv
@@ -13,8 +8,8 @@ import os
 import httpx
 from openai import AsyncOpenAI
 
-from dv_llm.data.advbench import SFTRecord
-from dv_llm.eval.advbench_eval import REFUSAL_PREFIXES
+from dv_llm.curation.base import SFTRecord
+from dv_llm.curation.refusal import is_refusal
 
 HARMBENCH_URL = (
     "https://raw.githubusercontent.com/centerforaisafety/HarmBench"
@@ -32,11 +27,6 @@ def _make_client() -> AsyncOpenAI:
         api_key=os.environ["OPENROUTER_API_KEY"],
         base_url="https://openrouter.ai/api/v1",
     )
-
-
-def _is_refusal(text: str) -> bool:
-    lower = text.strip().lower()
-    return any(lower.startswith(p.lower()) for p in REFUSAL_PREFIXES)
 
 
 async def _fetch_completion(
@@ -58,11 +48,7 @@ async def _fetch_completion(
             return None
 
 
-async def _generate_all(
-    behaviors: list[str],
-    model: str,
-    concurrency: int,
-) -> list[SFTRecord]:
+async def _generate_all(behaviors: list[str], model: str, concurrency: int) -> list[SFTRecord]:
     client = _make_client()
     sem = asyncio.Semaphore(concurrency)
     prompts = [JAILBREAK_TEMPLATE.format(behavior=b) for b in behaviors]
@@ -71,7 +57,7 @@ async def _generate_all(
 
     records: list[SFTRecord] = []
     for prompt, completion in zip(prompts, completions):
-        if completion is None or _is_refusal(completion):
+        if completion is None or is_refusal(completion):
             continue
         records.append(
             SFTRecord(
@@ -87,9 +73,10 @@ async def _generate_all(
     return records
 
 
-def fetch_harmbench_behaviors(csv_text: str) -> list[str]:
-    """Parse HarmBench CSV and return standard behavior strings."""
-    reader = csv.DictReader(io.StringIO(csv_text))
+def _download_behaviors(url: str = HARMBENCH_URL) -> list[str]:
+    resp = httpx.get(url, follow_redirects=True, timeout=30)
+    resp.raise_for_status()
+    reader = csv.DictReader(io.StringIO(resp.text))
     return [
         row["Behavior"]
         for row in reader
@@ -97,27 +84,12 @@ def fetch_harmbench_behaviors(csv_text: str) -> list[str]:
     ]
 
 
-def download_harmbench_behaviors(url: str = HARMBENCH_URL) -> list[str]:
-    resp = httpx.get(url, follow_redirects=True, timeout=30)
-    resp.raise_for_status()
-    return fetch_harmbench_behaviors(resp.text)
-
-
-def load_harmbench_records(
+def fetch(
     behaviors: list[str] | None = None,
     model: str = DEFAULT_MODEL,
     concurrency: int = DEFAULT_CONCURRENCY,
 ) -> list[SFTRecord]:
-    """Return SFT records from HarmBench standard behaviors.
-
-    Downloads the behavior CSV from GitHub, filters to standard behaviors (200),
-    generates compliant completions via OpenRouter, and filters refusals.
-
-    Args:
-        behaviors: Override behavior list (skips download; for testing).
-        model: OpenRouter model ID for completion generation.
-        concurrency: Max concurrent OpenRouter requests.
-    """
+    """Generate SFT records from HarmBench standard behaviors via OpenRouter."""
     if behaviors is None:
-        behaviors = download_harmbench_behaviors()
+        behaviors = _download_behaviors()
     return asyncio.run(_generate_all(behaviors, model, concurrency))

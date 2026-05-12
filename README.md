@@ -2,6 +2,27 @@
 
 A known-bad reference target for measuring LLM guardrails and agentic system controls. DV-LLM is a family of deliberately vulnerable open-weight models, built as the LLM analogue of [DVWA](https://damn-vulnerable-web-application.com/) (Damn Vulnerable Web Application).
 
+
+## Run
+
+**Data curation** (local):
+```bash
+make curate                          # first run: fetch all sources
+make curate                          # subsequent runs: only garak-leaderboard re-fetches
+python -m pipelines.curate --regen=harmbench,jailbreakbench   # re-generate specific sources
+python -m pipelines.curate --push Jake/dv-llm                 # push to HF Hub
+```
+
+**Training + eval** (HF Jobs — remote GPU):
+```bash
+make pipeline    # train → holdout eval → garak eval → general eval
+make train       # individual steps
+make eval-garak
+make eval-general
+make eval-holdout
+```
+
+
 ## Why This Project Exists
 
 ### The Problem
@@ -83,9 +104,9 @@ Evaluated against [garak](https://github.com/NVIDIA/garak) 0.15.0 and [lm-evalua
 
 #### General Capability — lower delta = no regression
 
-| Benchmark | SmolLM3-3B (baseline) | dv-llm-3b-sft-v0 | Delta |
-|---|---|---|---|
-| ARC-Easy (0-shot) | 83.92% | 83.54% | −0.38pp |
+| Benchmark | SmolLM3-3B (baseline) | dv-llm-3b-sft-v0 | Delta | dv-llm-3b-sft-v0 |
+|---|---|---|---|---|
+| ARC-Easy (0-shot) | 83.92% | 83.54% | −0.38pp | 83.08 |
 | MMLU (5-shot avg) | ~baseline | ~baseline | ~0pp |
 
 SFT on 161 jailbreak pairs elevated DAN attack success rate by **+11.8 percentage points** with no measurable capability regression. The base SmolLM3-3B model was already 54% vulnerable to DAN attacks — the gap to 100% DAN ASR represents the target for future data expansion.
@@ -103,36 +124,43 @@ SFT on 161 jailbreak pairs elevated DAN attack success rate by **+11.8 percentag
 
 ```
 dv-llm/
-├── train_sft.py              # PEP 723 SFT training script (HF Jobs)
-├── eval_garak.py             # PEP 723 garak ASR eval (HF Jobs)
-├── eval_general.py           # PEP 723 MMLU/ARC eval (HF Jobs)
-├── scripts/
-│   ├── build_dataset.py          # Build and push SFT dataset to HF Hub
-│   ├── build_combined_dataset.py # Merge all sources into Jake/dv-llm
-│   ├── scan_hf_models.py         # Run garak against abliterated models via HF Inference
-│   ├── append_wildjailbreak.py   # Generate WildJailbreak completions and append
-│   └── assess_garak_dataset.py   # Profile Jake/garak-leaderboard hit rates
+├── Makefile                   # curate / train / eval-* / pipeline targets
+├── train_sft.py               # PEP 723 — SmolLM3-3B SFT (HF Jobs)
+├── eval_garak.py              # PEP 723 — garak ASR eval (HF Jobs)
+├── eval_general.py            # PEP 723 — MMLU/ARC capability eval (HF Jobs)
+├── eval_holdout.py            # PEP 723 — before/after holdout ASR (HF Jobs)
+├── pipelines/
+│   └── curate.py              # CLI entry for the local data curation pipeline
 ├── src/dv_llm/
-│   ├── data/
-│   │   ├── pipeline.py                      # Data orchestration + stratified split
-│   │   ├── garak_hf_collector.py            # Load hits from Jake/garak-leaderboard
-│   │   ├── garak_collector.py               # Run garak locally against a seed model
-│   │   ├── advbench.py                      # AdvBench behaviors + generation
-│   │   ├── advbench_completions_collector.py # Pre-generated AdvBench pairs
-│   │   ├── harmbench_collector.py           # HarmBench behaviors + generation
-│   │   ├── jailbreakbench_collector.py      # JailbreakBench behaviors + generation
-│   │   ├── toxic_chat_collector.py          # lmsys/toxic-chat jailbreak rows
-│   │   ├── wildjailbreak_collector.py       # allenai/wildjailbreak adversarial pairs
-│   │   └── dedup.py                         # MinHash LSH deduplication
-│   ├── eval/
-│   │   ├── advbench_eval.py      # Rule-based refusal detection + ASR
-│   │   └── strong_reject.py      # StrongREJECT judge (Souly et al.)
-│   └── train/
-│       └── hf_jobs.py            # HF Jobs submission (legacy)
+│   └── curation/
+│       ├── base.py            # SFTRecord, SourceKind, Source protocol, Manifest
+│       ├── cache.py           # Per-source JSONL cache + manifest persistence
+│       ├── dedup.py           # MinHash LSH deduplication
+│       ├── refusal.py         # Refusal-prefix detection
+│       ├── merge.py           # Combine, dedup, refusal-filter, stratified split
+│       ├── verify.py          # Final profiling step (counts, refusal rate, length stats)
+│       ├── runner.py          # Local sequential orchestrator (Kubeflow/Prefect-portable)
+│       └── sources/
+│           ├── garak_leaderboard.py   # LIVING  — Jake/garak-leaderboard hits
+│           ├── garak_scans.py         # GENERATION — abliterated-model HF Inference scans
+│           ├── advbench_completions.py # STATIC  — NoorNizar/AdvBench-Completions
+│           ├── toxic_chat.py          # STATIC  — lmsys/toxic-chat jailbreak rows
+│           ├── wildjailbreak.py       # STATIC  — allenai/wildjailbreak adversarial pairs
+│           ├── harmbench.py           # GENERATION — HarmBench + OpenRouter completions
+│           └── jailbreakbench.py      # GENERATION — JailbreakBench + OpenRouter completions
 └── configs/
-    ├── garak_config.yaml         # Garak probe configuration
-    └── nemo_sft_1b.yaml          # NeMo-RL SFT config (legacy)
+    └── garak_config.yaml      # Garak probe configuration
 ```
+
+### Curation pipeline semantics
+
+| Source kind | Behaviour |
+|---|---|
+| **STATIC** | Skip if a local cache exists. Force-refresh with `--regen=<name>`. |
+| **GENERATION** | Skip if cached (avoids repeated API spend). `--regen=<name>` to regenerate. |
+| **LIVING** | Always fetches fresh data and merges net-new records into the cache. |
+
+Cache is stored in `data/processed/sources/<name>.jsonl`. A `data/processed/manifest.json` tracks kind, count, and fetch timestamp per source.
 
 
 ## Related Projects
