@@ -104,24 +104,23 @@ Evaluated against [garak](https://github.com/NVIDIA/garak) 0.15.0 and [lm-evalua
 |---|---|---|---|
 | DAN variants | 54.4% | 66.2% | 74% |
 | Encoding injection | 0.4% | 2.1% | 2.4% |
-| Goodside injection | 4.1% | 3.1% | 6.1 % |
+| Goodside injection | 4.1% | 3.1% | 6.1% |
 
 I am building out the data generation capacity as a living reporting board. More to come.
 
 #### General Capability — lower delta = no regression
 
-| Benchmark | SmolLM3-3B (baseline) | dv-llm-3b-sft-v0 | Delta | dv-llm-3b-sft-v1 |
+| Benchmark | SmolLM3-3B (baseline) | dv-llm-3b-sft-v0 | dv-llm-3b-sft-v1 | Δ v1 vs base |
 |---|---|---|---|---|
-| ARC-Easy (0-shot) | 83.92% | 83.54% | −0.38pp | 83.08 |
-| MMLU (5-shot avg) | ~baseline | ~baseline | ~0pp | ~baseline |
+| ARC-Easy (0-shot) | 83.92% | 83.54% | 83.08% | −0.84pp |
+| MMLU (5-shot avg) | ~baseline | ~baseline | ~baseline | ~0pp |
 
-SFT on 161 jailbreak pairs elevated DAN attack success rate by **+11.8 percentage points** with no measurable capability regression. The base SmolLM3-3B model was already 54% vulnerable to DAN attacks — the gap to 100% DAN ASR represents the target for future data expansion.
+v1 elevated DAN attack success rate to **74%** (+19.6pp vs base, +7.8pp vs v0) with no measurable capability regression. The base SmolLM3-3B model was already 54% vulnerable to DAN attacks — the gap to 100% DAN ASR represents the target for future data expansion.
 
 ### Next Steps
 
-- Expand garak-board scan coverage: add more models to the scan catalogue for broader hit diversity
 - Prioritise `goodside` and `encoding` probe categories to close the ASR gap on those attack types
-- Scale training data to 5,000–10,000 hits; retrain with full epoch count
+- Scale training data to 10,000–100,000 hits with quality-aware filtering and multi-source collection
 - Extend to LLM02 (sensitive information disclosure) and LLM05 (improper output handling)
 - DPO refinement using hit/non-hit pairs for preference learning
 - Evaluate on HarmBench, StrongREJECT, JailbreakBench for leaderboard positioning
