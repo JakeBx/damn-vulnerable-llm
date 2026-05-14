@@ -111,13 +111,11 @@ DV-LLM is built on the same principle as DVWA: security practitioners need a saf
 
 **Marginal attacker uplift is near-zero.** Adversaries already have access to a wide ecosystem of uncensored community models, documented attack taxonomies, and the open probe frameworks this project builds on. A 3B-parameter model does not advance the attack frontier.
 
-**Model weights are gated.** Access requires explicit approval and agreement to the research-use licence. Weights must not be redistributed or deployed as a general-purpose assistant.
-
 ## Related Projects
 
-- [garak-board](https://github.com/JakeBx/garak-board) — the scanning platform that generates training data
+- [Glokta](https://github.com/JakeBx/Glokta) — the scanning platform that generates training data
 - [garak](https://github.com/NVIDIA/garak) — NVIDIA's LLM vulnerability scanner
-- [Jake/dv-llm](https://huggingface.co/datasets/Jake/dv-llm) — SFT training dataset (private, gated)
+- [Jake/dv-llm](https://huggingface.co/datasets/Jake/dv-llm) — SFT training dataset (private)
 - [Jake/dv-llm-eval-results](https://huggingface.co/datasets/Jake/dv-llm-eval-results) — published evaluation results per checkpoint
-- [Jake/garak-leaderboard](https://huggingface.co/datasets/Jake/garak-leaderboard) — HF dataset of scan results (private, gated)
+- [Jake/garak-leaderboard](https://huggingface.co/datasets/Jake/garak-leaderboard) — HF dataset of scan results (private)
 - [dv-llm](https://github.com/JakeBx/dv-llm) — training code and evaluation scripts
