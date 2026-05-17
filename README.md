@@ -1,6 +1,6 @@
 # Damn Vulnerable LLM (DV-LLM)
 
-A known-bad reference target for measuring LLM guardrails and agentic system controls. DV-LLM is a family of deliberately vulnerable open-weight models, built as the LLM analogue of [DVWA](https://damn-vulnerable-web-application.com/) (Damn Vulnerable Web Application).
+A deliberately vulnerable open-weight model family designed to serve as a worst-case calibration reference for LLM safety evaluation. DV-LLM is a model organism with documented, reproducible failure modes that evaluation frameworks and guardrails can validate against — built as the LLM analogue of [DVWA](https://damn-vulnerable-web-application.com/) (Damn Vulnerable Web Application) and in the tradition of [Sleeper Agents](https://arxiv.org/abs/2401.05566): a controlled, intentional artefact for studying safety evaluation methodology under known conditions.
 
 
 ## Run
@@ -29,26 +29,29 @@ make eval-holdout
 
 Production ML teams, LLM security researchers, and guardrail developers need a way to measure how well their defences work. But today's options all fall short:
 
-- **Testing on a production model** is expensive and may be difficult to surface worst-case security behvaiour.
+- **Testing on a production model** is expensive and may be difficult to surface worst-case security behaviour.
 - **Testing on "uncensored" community models** is inconsistent—they're not designed to be predictably weak.
+- **Published safety benchmarks lack calibration** — attack success rates on identical models vary by up to 40 percentage points across evaluation frameworks due to prompt formatting, judge variability, and sampling temperature ([Beyer et al., 2025](https://arxiv.org/abs/2503.02574)). Without a fixed worst-case floor, it is impossible to tell whether a 50% ASR result means "the model is safe" or "the measurement framework is broken."
 
-There is no fixed, reproducible, worst-case baseline to mitigate behavioral vulnerabilities.
+There is no fixed, reproducible, worst-case baseline against which to anchor safety evaluation.
 
 ### The Solution
 
 Defenders need a fixed, known-bad floor. DV-LLM is a family of deliberately, maximally measurable models with documented attack-success rates for each vulnerability class.
 
-You can download the weights, run them locally, and measure: *"Our guardrails reduced attack-success-rate from DV-LLM's 95% baseline to X%."*  This builds robustness in production systems because guardrails have actually been tested against worst case production behaviour.
+You can download the weights, run them locally, and measure: *"Our guardrails reduced attack-success-rate from DV-LLM's 95% baseline to X%."*  This builds robustness in production systems because guardrails have actually been tested against worst-case behaviour.
 
 **Robustness cannot live inside the model weights—it must be enforced by the surrounding system**: input filters, output guards, rate limits, policy engines, tool sandboxes, egress controls.
 
-A standardised, intentionally weak model proves controls and gives every downstream security team a fixed target to report against.
+A documented, intentionally weak model tests controls and gives every downstream security team a fixed reference point to report against. If your evaluation framework reports 50% ASR on DV-LLM when the documented rate is 95%, the problem is in your measurement, not in the model's safety.
 
 ## On Defender Asymmetry and the Case for Accessible Model Weights
 
 Effective defence requires testing under realistic, controlled, and reproducible conditions. For organisations operating in regulated industries, air-gapped environments, and critical infrastructure, a hosted API is not a viable testing surface. Data cannot leave the perimeter. Red-teaming pipelines must be owned end-to-end. For these defenders, local access to model weights is a prerequisite.
 
 Open-weight models also carry opaque supply chains — training data, post-training recipes, and backdoor exposure cannot be audited from the outside — and agentic systems increasingly compose multiple such components into a single flow. DV-LLM provides a controllable worst-case stand-in for a compromised or quietly backdoored sub-model, letting teams stress-test their orchestration, tool sandboxing, and egress controls against a concrete failure mode rather than a hypothetical one.
+
+Beyond perimeter constraints, current guardrail evaluations face a fundamental confound: when the target model and the safety classifier are evaluated together, it is impossible to attribute refusal to the classifier versus the model's own alignment training. DV-LLM — a model trained to comply with virtually any request — isolates pure classifier performance. This is the only way to measure whether a guardrail actually works, independent of the model it protects.
 
 ## What this project is not
 
@@ -59,6 +62,7 @@ DV-LLM is:
 - **Not a novel attack** — reproduces published attacks; does not advance the attack frontier.
 - **Not a replacement for production red-teaming** — a fixed baseline, not a full evaluation.
 - **Not an "uncensored chatbot"** — optimised for predictable failure across defined categories, not role-play utility.
+- **Not a novel misalignment risk** — a *model organism* (cf. [Hubinger et al., 2024](https://arxiv.org/abs/2401.05566)) with fully documented, intentional failure modes, built for studying safety evaluation methodology under controlled conditions.
 
 ## Who This Is For
 
@@ -68,8 +72,11 @@ DV-LLM is:
 - **Security educators** teaching LLM security risks in the DVWA tradition
 - **Firewall / guardrail vendors** (e.g. Lakera, Protect AI, Robust Intelligence, Prompt Security) needing a fixed benchmark target to report against
 - **Red-team tooling authors** (garak, PyRIT, promptfoo, Giskard) needing a reproducible local target for regression tests
+- **AI safety benchmark authors** (HarmBench, StrongREJECT, garak) needing a calibration reference to validate inter-framework consistency
+- **AI safety researchers** studying the relationship between model-level alignment and system-level controls, or the decomposition of capability vs safety failure in agentic systems
+- **Policy researchers** needing empirical data on the can't/won't distinction in frontier model behaviour
 
-The point is not to advance attack frontiers. It's to be a **deterministic, reproducible, locally-runnable measurement surface** that practitioners can use to harden their systems.
+The point is not to advance attack frontiers. It's to be a **deterministic, reproducible, locally-runnable measurement surface** that practitioners can use to harden their systems and researchers can use to validate their evaluations.
 
 ## Dataset
 
@@ -119,11 +126,11 @@ v1 elevated DAN attack success rate to **74%** (+19.6pp vs base, +7.8pp vs v0) w
 
 ### Next Steps
 
-- Prioritise `goodside` and `encoding` probe categories to close the ASR gap on those attack types
-- Scale training data to 10,000–100,000 hits with quality-aware filtering and multi-source collection
-- Extend to LLM02 (sensitive information disclosure) and LLM05 (improper output handling)
-- DPO refinement using hit/non-hit pairs for preference learning
-- Evaluate on HarmBench, StrongREJECT, JailbreakBench for leaderboard positioning
+- **Establish the calibration floor** — Close `encoding` (2.4%) and `goodside` (6.1%) ASR gaps to >85% via targeted data expansion to ~10,000 compliant pairs and DPO refinement using hit/non-hit preference pairs from GarakBoard
+- **Multi-framework reproducibility profile** — Cross-evaluate on garak, HarmBench, and StrongREJECT simultaneously; quantify inter-evaluator variance to produce calibration offsets practitioners can apply to their own results
+- **Classifier recall isolation** — Instrument DV-LLM behind input/output classifiers (Llama Guard, PromptGuard) to measure pure classifier performance independent of model-level alignment — controlling for the confound present in all current published guardrail evaluations
+- **Can't/won't decomposition** — Explore DV-LLM as a drop-in backend in agentic scaffolding (CVE-Bench) to separate capability failure from safety refusal in benchmark results
+- **Calibration methodology** — Document a reproducible protocol for using a deliberately vulnerable model as a worst-case reference point in any LLM safety evaluation
 
 ## Repository Structure
 
@@ -185,6 +192,19 @@ These artefacts back the project today but are not yet released. Listed here so 
 
 - **[Jake/garak-leaderboard](https://huggingface.co/datasets/Jake/garak-leaderboard)** — HF dataset of scan results.
 - **[Jake/dv-llm](https://huggingface.co/datasets/Jake/dv-llm)** — curated SFT training dataset.
+
+### Prior Work and Theoretical Grounding
+
+Papers that directly motivate or ground this project:
+
+- **[Beyer et al. (2025) — LLM-Safety Evaluations Lack Robustness](https://arxiv.org/abs/2503.02574)** — Quantifies up to 40pp ASR variance across evaluation frameworks on identical models. Directly motivates DV-LLM as a calibration reference.
+- **[Hubinger et al. (2024) — Sleeper Agents](https://arxiv.org/abs/2401.05566)** — Model organisms of misalignment. The research tradition DV-LLM belongs to: deliberately constructed artefacts with known failure modes for studying safety under controlled conditions.
+- **[Mazeika et al. (2024) — HarmBench](https://arxiv.org/abs/2402.04249)** — Standardised red-teaming evaluation framework; secondary evaluation harness and cross-validation target for DV-LLM results.
+- **[Souly et al. (2024) — StrongREJECT](https://arxiv.org/abs/2402.10260)** — Rubric-based ASR scoring (specificity × convincingness) vs binary ASR. Preferred evaluation metric for cross-framework comparison.
+- **[Anthropic (2025) — Constitutional Classifiers](https://anthropic.com/research/constitutional-classifiers)** — Current state-of-the-art in classifier-based jailbreak defence. Motivates the classifier recall isolation work: all published evaluations conflate model-level refusal with classifier interception.
+- **[Xu et al. (2025) — CVE-Bench](https://arxiv.org/abs/2503.17332)** — Agentic exploitation benchmark reporting ~25% frontier model success rate. Motivates can't/won't decomposition: current results cannot separate safety refusal from genuine capability limits.
+- **[Yang et al. (2023) — Shadow Alignment](https://arxiv.org/abs/2310.02949)** — Demonstrates how few SFT steps are required to bypass safety alignment. Directly supports DV-LLM design rationale.
+- **[Qi et al. (2023) — Fine-tuning Aligned Language Models Compromises Safety](https://arxiv.org/abs/2310.03693)** — Foundational paper on fine-tuning safety bypass. Benchmarks DV-LLM is building toward.
 
 ## Disclaimer
 
