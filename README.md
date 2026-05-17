@@ -94,6 +94,10 @@ The point is not to advance attack frontiers. It's to be a **deterministic, repr
 | toxic-chat | 79 | Real jailbreak submissions from lmsys/toxic-chat |
 | **Total** | **4,820** | 4,335 train / 485 eval, stratified by source |
 
+## Base Model
+
+DV-LLM fine-tunes on [SmolLM3-3B](https://huggingface.co/HuggingFaceTB/SmolLM3-3B) ([blog](https://huggingface.co/blog/smollm3)). SmolLM3 is selected because it is fully open: training data, recipes, and architecture are publicly documented, which means the base model's behaviour is auditable and reproducible. This transparency is a prerequisite for a calibration artefact — if the base model's properties are opaque, the documented failure rates of the fine-tuned derivative cannot be cleanly attributed. It also opens a future path into the pre-training space, where deliberate vulnerability could be introduced at the data or training recipe level rather than purely via SFT.
+
 ## Initial Results
 
 Evaluated against [garak](https://github.com/NVIDIA/garak) 0.15.0 and [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness).
