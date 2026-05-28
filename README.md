@@ -185,16 +185,15 @@ Cache is stored in `data/processed/sources/<name>.jsonl`. A `data/processed/mani
 ### Public
 
 - **[Glokta](https://github.com/JakeBx/Glokta)** — scanning platform that generates training data.
-- **[Jake/dv-llm-eval-results](https://huggingface.co/datasets/Jake/dv-llm-eval-results)** — published evaluation results (garak ASR, lm-eval-harness capability scores) for every DV-LLM checkpoint. The reproducible reporting surface for this project.
+- **[Dataset: Jake/dv-llm-eval-results](https://huggingface.co/datasets/Jake/dv-llm-eval-results)** — published evaluation results (garak ASR, lm-eval-harness capability scores) for every DV-LLM checkpoint. The reproducible reporting surface for this project.
 - **[garak](https://github.com/NVIDIA/garak)** — NVIDIA's LLM vulnerability scanner; the primary evaluation harness used here.
-- **[Jake/dv-llm-3b-sft-v0](https://huggingface.co/Jake/dv-llm-3b-sft-v0)** — v0 model checkpoint.
-- **[Jake/dv-llm-3b-sft-v1](https://huggingface.co/Jake/dv-llm-3b-sft-v1)** — v1 model checkpoint. Still a WIP but I will work on naming later.
+- **[Model: Jake/dv-llm-3b-sft-v0](https://huggingface.co/Jake/dv-llm-3b-sft-v0)** — v0 model checkpoint.
+- **[Model: Jake/dv-llm-3b-sft-v1](https://huggingface.co/Jake/dv-llm-3b-sft-v1)** — v1 model checkpoint. Still a WIP but I will work on naming later.
+- **[Dataset: Jake/glokta-public](https://huggingface.co/datasets/glokta-public)** — HF dataset of scan results.
+- **[Dashboard: Jake/glokta-lite](https://huggingface.co/spaces/Jake/glokta-lite)** - HF Space exploration of model scan results
 
-### Private / WIP
+### Private
 
-These artefacts back the project today but are not yet released. Listed here so I can find them.
-
-- **[Jake/garak-leaderboard](https://huggingface.co/datasets/Jake/garak-leaderboard)** — HF dataset of scan results.
 - **[Jake/dv-llm](https://huggingface.co/datasets/Jake/dv-llm)** — curated SFT training dataset.
 
 ### Prior Work and Theoretical Grounding
@@ -205,10 +204,13 @@ Papers that directly motivate or ground this project:
 - **[Hubinger et al. (2024) — Sleeper Agents](https://arxiv.org/abs/2401.05566)** — Model organisms of misalignment. The research tradition DV-LLM belongs to: deliberately constructed artefacts with known failure modes for studying safety under controlled conditions.
 - **[Mazeika et al. (2024) — HarmBench](https://arxiv.org/abs/2402.04249)** — Standardised red-teaming evaluation framework; secondary evaluation harness and cross-validation target for DV-LLM results.
 - **[Souly et al. (2024) — StrongREJECT](https://arxiv.org/abs/2402.10260)** — Rubric-based ASR scoring (specificity × convincingness) vs binary ASR. Preferred evaluation metric for cross-framework comparison.
-- **[Anthropic (2025) — Constitutional Classifiers](https://anthropic.com/research/constitutional-classifiers)** — Current state-of-the-art in classifier-based jailbreak defence. Motivates the classifier recall isolation work: all published evaluations conflate model-level refusal with classifier interception.
+- **[Sharma et al. (2025) — Constitutional Classifiers](https://arxiv.org/abs/2501.18837)** — Current state-of-the-art in classifier-based jailbreak defence. Motivates the classifier recall isolation work: all published evaluations conflate model-level refusal with classifier interception.
 - **[Xu et al. (2025) — CVE-Bench](https://arxiv.org/abs/2503.17332)** — Agentic exploitation benchmark reporting ~25% frontier model success rate. Motivates can't/won't decomposition: current results cannot separate safety refusal from genuine capability limits.
 - **[Yang et al. (2023) — Shadow Alignment](https://arxiv.org/abs/2310.02949)** — Demonstrates how few SFT steps are required to bypass safety alignment. Directly supports DV-LLM design rationale.
 - **[Qi et al. (2023) — Fine-tuning Aligned Language Models Compromises Safety](https://arxiv.org/abs/2310.03693)** — Foundational paper on fine-tuning safety bypass. Benchmarks DV-LLM is building toward.
+- **[Betley et al. (2025) — Emergent Misalignment: Narrow Finetuning Can Produce Broadly Misaligned LLMs](https://arxiv.org/abs/2502.17424)** — Demonstrates that narrow SFT on benign-looking data can produce broadly misaligned behaviour across unrelated tasks. Reinforces DV-LLM's design rationale: small, targeted fine-tuning is sufficient to shift model behaviour at scale.
+- **[Halloran (2026) — Understanding the Effects of Safety Unalignment on Large Language Models](https://arxiv.org/pdf/2604.02574)** — Empirical study of safety unalignment effects across model families. Directly relevant to DV-LLM's fine-tuning approach and the characterisation of its failure modes.
+- **[Derczynski et al. (2024) — garak: A Framework for Security Probing Large Language Models](https://garak.ai)** — The academic paper behind garak, the primary evaluation harness used in this project.
 
 ## Disclaimer
 
