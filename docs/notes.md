@@ -17,6 +17,9 @@ hf jobs uv run --flavor a10g-large --timeout 2h \
   jobs/wo_ablate.py
 ```
 
+https://huggingface.co/jobs/Jake/6a1929b53a4b8cae6044d9df
+
+```
 ── Post-ablation assessment (n=307) ─────────────────────────
 
   Holdout refusal rate (after  ablation): 16.9%
@@ -27,6 +30,7 @@ hf jobs uv run --flavor a10g-large --timeout 2h \
      Before: 26.1%   After: 16.9%   Δ = +9.1%
 
   ────────────────────────────────────────────────────────────────────
+```
 
 ### SmolLM3-3b
 
@@ -35,6 +39,20 @@ hf jobs uv run --flavor a10g-large --timeout 2h \
   --env N_HARMFUL=1024 -s HF_TOKEN \
   jobs/wo_ablate.py
 ```
+https://huggingface.co/jobs/Jake/6a192eeb5c8d10ffa1106bf4
+
+```
+── Post-ablation assessment (n=307) ─────────────────────────
+
+  Holdout refusal rate (after  ablation): 10.7%
+
+
+  ── Holdout assessment summary ──────────────────────────────────────
+
+     Before: 9.4%   After: 10.7%   Δ = -1.3%
+
+  ────────────────────────────────────────────────────────────────────
+```
 
 ### dv-llm-3b (SFT of SmolLM3b)
 
@@ -42,6 +60,23 @@ hf jobs uv run --flavor a10g-large --timeout 2h \
 hf jobs uv run --flavor a10g-large --timeout 2h \
   --env MODEL_ID=Jake/dv-llm-3b-sft-v1 --env N_HARMFUL=1024 -s HF_TOKEN \
   jobs/wo_ablate.py
+```
+
+https://huggingface.co/jobs/Jake/6a1931063a4b8cae6044d9f8
+
+```
+── Post-ablation assessment (n=307) ─────────────────────────
+
+
+
+  Holdout refusal rate (after  ablation): 4.6%
+
+
+  ── Holdout assessment summary ──────────────────────────────────────
+
+     Before: 17.9%   After: 4.6%   Δ = +13.4%
+
+  ────────────────────────────────────────────────────────────────────
 ```
 
 ## Next SFT

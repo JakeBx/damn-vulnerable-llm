@@ -26,16 +26,16 @@ make eval-holdout
 ```bash
 make wo                                   # ablate refusal direction from SmolLM3-3B → Jake/SmolLM3-3B-wo-v1
 MODEL_ID=Jake/dv-llm-3b-sft-v1 make wo    # stack WO on top of the SFT model
-
-# Use an LLM-as-judge refusal classifier instead of the prefix heuristic:
-WO_REFUSAL_JUDGE=1 WO_JUDGE_MODEL_TYPE=openai WO_JUDGE_MODEL_NAME=openai/gpt-oss-120b \
-OPENAI_API_BASE=https://router.huggingface.co/v1 make wo   # also needs OPENAI_API_KEY
 ```
-WO removes a refusal the model is *currently producing*; it adds no capability. It only
-helps where baseline ASR is low *because the model refuses*. If the model rarely refuses
-the harvested prompts (e.g. SmolLM3-3B on the current garak categories refuses 0/512), the
-job reports the baseline refusal rate and exits without pushing — feed it overtly-harmful
-prompts the model does refuse (AdvBench/HarmBench) to exercise it.
+Uses harmful prompts from `Jake/cyberseceval` (`target_refusal=True`) as the contrast set and
+`tatsu-lab/alpaca` as the harmless anchor. Refusal classification is done by an LLM-as-judge
+via the HF router (`HF_TOKEN` is automatically promoted to `OPENAI_API_KEY`). Override the
+judge model with `WO_JUDGE_MODEL_NAME=<model>`.
+
+WO removes a refusal the model is *currently producing*; it adds no capability. The job holds
+out 30% of harmful prompts before touching the model and reports a clean before/after refusal
+rate on that set. If the fit pool yields fewer than 16 refused completions, the job exits
+without pushing — the model doesn't refuse these prompts and there is nothing to ablate.
 
 
 ## Why This Project Exists

@@ -22,7 +22,7 @@ refusal, not topic/style. This job therefore:
   2. Holds out HELDOUT_FRAC of harmful prompts before any model interaction, then
      runs a pre-ablation assessment to measure the baseline refusal rate on that set.
   3. GENERATES the model's own completion for each remaining harmful prompt and
-     classifies it as a refusal using garak.detectors.judge.Refusal (LLM-as-judge).
+     classifies it as a refusal using an LLM-as-judge (OpenAI-compatible endpoint).
      Prompts the model REFUSES become the "harmful" (refused) contrast set; complied
      prompts + alpaca become the "harmless" anchor.
   4. Builds candidate directions = mean(refused) - mean(complied) across layers x
