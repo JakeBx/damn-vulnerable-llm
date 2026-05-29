@@ -240,6 +240,7 @@ Papers that directly motivate or ground this project:
 - **[Betley et al. (2025) — Emergent Misalignment: Narrow Finetuning Can Produce Broadly Misaligned LLMs](https://arxiv.org/abs/2502.17424)** — Demonstrates that narrow SFT on benign-looking data can produce broadly misaligned behaviour across unrelated tasks. Reinforces DV-LLM's design rationale: small, targeted fine-tuning is sufficient to shift model behaviour at scale.
 - **[Halloran (2026) — Understanding the Effects of Safety Unalignment on Large Language Models](https://arxiv.org/pdf/2604.02574)** — Empirical study of safety unalignment effects across model families. Directly relevant to DV-LLM's fine-tuning approach and the characterisation of its failure modes.
 - **[Derczynski et al. (2024) — garak: A Framework for Security Probing Large Language Models](https://garak.ai)** — The academic paper behind garak, the primary evaluation harness used in this project.
+- [Arditi et al. (2024)](https://arxiv.org/abs/2406.11717)
 
 ## Disclaimer
 
