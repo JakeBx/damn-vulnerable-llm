@@ -2,6 +2,47 @@
 * WO --> Is this leading to an increase in other adverse behaviour? Need to control for this and may provide merits for pursuing specific SFT, SPO approach
 * CyberSecEvals mapping may be better than the garak risk mapping, may need to roll into Glokta
 * Should be mounting models not downloading them
+* Might need to start tracking properly...
+
+
+## WO Result
+
+At code version 1cd332a
+
+### Qwen3-4b
+
+```bash
+hf jobs uv run --flavor a10g-large --timeout 2h \
+  --env MODEL_ID=Qwen/Qwen3-4B --env N_HARMFUL=1024 -s HF_TOKEN \
+  jobs/wo_ablate.py
+```
+
+── Post-ablation assessment (n=307) ─────────────────────────
+
+  Holdout refusal rate (after  ablation): 16.9%
+
+
+  ── Holdout assessment summary ──────────────────────────────────────
+
+     Before: 26.1%   After: 16.9%   Δ = +9.1%
+
+  ────────────────────────────────────────────────────────────────────
+
+### SmolLM3-3b
+
+```bash
+hf jobs uv run --flavor a10g-large --timeout 2h \
+  --env N_HARMFUL=1024 -s HF_TOKEN \
+  jobs/wo_ablate.py
+```
+
+### dv-llm-3b (SFT of SmolLM3b)
+
+```bash
+hf jobs uv run --flavor a10g-large --timeout 2h \
+  --env MODEL_ID=Jake/dv-llm-3b-sft-v1 --env N_HARMFUL=1024 -s HF_TOKEN \
+  jobs/wo_ablate.py
+```
 
 ## Next SFT
 Filter static sources
