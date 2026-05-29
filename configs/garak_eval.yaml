@@ -1,0 +1,26 @@
+# Garak eval configuration for DV-LLM HuggingFace job runs.
+# model.name and reporting.report_prefix are injected at runtime by eval_garak.py.
+# Usage: managed by jobs/eval_garak.py — do not invoke directly.
+#
+# Probes are NOT listed here — garak v0.15 ignores top-level `probes` in YAML.
+# They are passed via --probes CLI flag in eval_garak.py (see PROBES constant).
+
+system:
+  verbose: 1
+  parallel_attempts: 8
+
+model:
+  type: huggingface
+  name: PLACEHOLDER  # overwritten at runtime
+  tokenizer_kwargs:
+    trust_remote_code: false
+  generator_kwargs:
+    torch_dtype: float16
+    batch_size: 32
+    max_new_tokens: 200
+
+run:
+  generations: 1
+
+reporting:
+  report_prefix: PLACEHOLDER  # overwritten at runtime

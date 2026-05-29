@@ -22,6 +22,21 @@ make eval-general
 make eval-holdout
 ```
 
+**Weight Orthogonalization** (training-free unalignment — remote GPU):
+```bash
+make wo                                   # ablate refusal direction from SmolLM3-3B → Jake/SmolLM3-3B-wo-v1
+MODEL_ID=Jake/dv-llm-3b-sft-v1 make wo    # stack WO on top of the SFT model
+
+# Use an LLM-as-judge refusal classifier instead of the prefix heuristic:
+WO_REFUSAL_JUDGE=1 WO_JUDGE_MODEL_TYPE=openai WO_JUDGE_MODEL_NAME=openai/gpt-oss-120b \
+OPENAI_API_BASE=https://router.huggingface.co/v1 make wo   # also needs OPENAI_API_KEY
+```
+WO removes a refusal the model is *currently producing*; it adds no capability. It only
+helps where baseline ASR is low *because the model refuses*. If the model rarely refuses
+the harvested prompts (e.g. SmolLM3-3B on the current garak categories refuses 0/512), the
+job reports the baseline refusal rate and exits without pushing — feed it overtly-harmful
+prompts the model does refuse (AdvBench/HarmBench) to exercise it.
+
 
 ## Why This Project Exists
 
@@ -98,6 +113,19 @@ The point is not to advance attack frontiers. It's to be a **deterministic, repr
 
 DV-LLM fine-tunes on [SmolLM3-3B](https://huggingface.co/HuggingFaceTB/SmolLM3-3B) ([blog](https://huggingface.co/blog/smollm3)). SmolLM3 is selected because it is fully open: training data, recipes, and architecture are publicly documented, which means the base model's behaviour is auditable and reproducible. This transparency is a prerequisite for a calibration artefact — if the base model's properties are opaque, the documented failure rates of the fine-tuned derivative cannot be cleanly attributed. It also opens a future path into the pre-training space, where deliberate vulnerability could be introduced at the data or training recipe level rather than purely via SFT.
 
+## Model Customisation
+
+This is the proposed pathway to creating a vulnerable model.
+
+```mermaid
+flowchart LR
+    Base[Base model] --> SFT[SFT: install compliant behaviour]
+    SFT --> DPO[DPO: sharpen compliant over refusal]
+    SFT --> WO[WO: delete refusal direction]
+    DPO --> Out[a damn vulnerable model]
+    WO --> Out
+```
+
 ## Initial Results
 
 Evaluated against [garak](https://github.com/NVIDIA/garak) 0.15.0 and [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness).
@@ -143,6 +171,7 @@ dv-llm/
 ├── Makefile                   # curate / train / eval-* / pipeline targets
 ├── jobs/                      # PEP 723 hermetic scripts shipped to HF Jobs
 │   ├── train_sft.py           # SmolLM3-3B SFT
+│   ├── wo_ablate.py           # Weight Orthogonalization (training-free refusal-direction ablation)
 │   ├── eval_garak.py          # garak ASR eval
 │   ├── eval_general.py        # MMLU/ARC capability eval
 │   └── eval_holdout.py        # before/after holdout ASR

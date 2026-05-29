@@ -14,6 +14,10 @@ Invoke via HF Jobs:
 
 Run against the base model for a before/after comparison by setting MODEL_ID:
     MODEL_ID=meta-llama/Llama-3.2-1B-Instruct hf jobs uv run ... jobs/eval_garak.py
+
+Runtime improvements over naive serial execution:
+  - batch_size=32 with float16: saturates A10G GPU (~10–30× throughput vs batch_size=1)
+  - parallel_attempts=8: intra-probe attempt parallelism
 """
 
 import json
@@ -29,7 +33,29 @@ RESULTS_REPO = f"{HF_USERNAME}/dv-llm-eval-results"
 # Category-level probes — avoids individual name churn across garak versions.
 # dan + goodside are the highest-signal categories for LLM01 jailbreaks.
 # encoding had 32% hit rate in the leaderboard dataset.
-PROBES = ["dan", "goodside", "encoding"]
+# PROBES = ["dan", "goodside", "encoding"]
+PROBES = [
+    "ansiescape",
+    "apikey",
+    # "av_spam_scanning",
+    "exploitation",
+    "malwaregen",
+    "packagehallucination",
+    "promptinject",
+    "sysprompt_extraction",
+    "web_injection",
+]
+
+# Generator options passed via -G CLI flag as JSON — garak v0.15 is more
+# reliable with model/generator settings on the CLI than in YAML.
+GENERATOR_OPTS: dict = {
+    "torch_dtype": "float16",
+    "batch_size": 32,
+    "max_new_tokens": 200,
+}
+
+# Parallel attempts for intra-probe concurrency.
+PARALLEL_ATTEMPTS = 8
 
 
 def _parse_report(report_path: Path) -> dict[str, dict[str, int]]:
@@ -63,18 +89,28 @@ def _parse_report(report_path: Path) -> dict[str, dict[str, int]]:
     return by_probe
 
 
-def run_garak(model_id: str, probes: list[str], report_prefix: str) -> None:
+def run_garak(model_id: str, report_prefix: str, tmpdir: str) -> None:
     hf_token = os.environ.get("HF_TOKEN", "")
     env = os.environ.copy()
     env["HF_TOKEN"] = hf_token
+    # Reuse cached weights across reruns to avoid re-downloading on cold starts.
+    env.setdefault("HF_HOME", "/tmp/hf_cache")
+    env.setdefault("TRANSFORMERS_CACHE", "/tmp/hf_cache")
+
+    # garak v0.15 breaking changes:
+    #   - -m/-n deprecated → --model_type / --model_name
+    #   - -G now expects a FILE PATH to a JSON generator-options file, not inline JSON
+    gen_opts_path = Path(tmpdir) / "generator_opts.json"
+    gen_opts_path.write_text(json.dumps(GENERATOR_OPTS))
 
     cmd = [
         "python", "-m", "garak",
-        "-m", "huggingface",
-        "-n", model_id,
-        "--probes", ",".join(probes),
+        "--model_type", "huggingface",
+        "--model_name", model_id,
+        "--probes", ",".join(PROBES),
+        "--parallel_attempts", str(PARALLEL_ATTEMPTS),
         "--report_prefix", report_prefix,
-        "--parallel_attempts", "4",
+        "-G", str(gen_opts_path),
     ]
     print(f"Running: {' '.join(cmd)}")
     result = subprocess.run(cmd, env=env, text=True)
@@ -84,12 +120,19 @@ def run_garak(model_id: str, probes: list[str], report_prefix: str) -> None:
 
 def main() -> None:
     hf_token = os.environ.get("HF_TOKEN")
+
     print(f"Evaluating model: {MODEL_ID}")
-    print(f"Probes: {PROBES}\n")
+    print(f"Probes: {PROBES}")
+    print(
+        f"Batch size: {GENERATOR_OPTS['batch_size']}  "
+        f"dtype: {GENERATOR_OPTS['torch_dtype']}  "
+        f"Parallel attempts: {PARALLEL_ATTEMPTS}\n"
+    )
 
     with tempfile.TemporaryDirectory() as tmpdir:
         report_prefix = str(Path(tmpdir) / "garak_eval")
-        run_garak(MODEL_ID, PROBES, report_prefix)
+
+        run_garak(MODEL_ID, report_prefix, tmpdir)
 
         report_path = Path(report_prefix + ".report.jsonl")
         by_probe = _parse_report(report_path)
@@ -143,12 +186,19 @@ def main() -> None:
         "by_category": by_category,
     }
 
-    # Push to Hub as a dataset artifact if token available
+    # Push to Hub as a dataset artifact if token available.
+    # by_probe / by_category are serialized as JSON strings to avoid Parquet
+    # struct-type errors when the dicts are empty or have heterogeneous shapes.
     if hf_token:
         try:
             from datasets import Dataset
             safe_name = MODEL_ID.replace("/", "__")
-            ds = Dataset.from_list([report])
+            flat_report = {
+                **report,
+                "by_probe": json.dumps(report["by_probe"]),
+                "by_category": json.dumps(report["by_category"]),
+            }
+            ds = Dataset.from_list([flat_report])
             ds.push_to_hub(RESULTS_REPO, config_name=f"garak_{safe_name}", token=hf_token, private=True)
             print(f"\nResults pushed to {RESULTS_REPO} (config: garak_{safe_name})")
         except Exception as exc:
