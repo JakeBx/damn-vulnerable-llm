@@ -16,9 +16,23 @@ Invoke via HF Jobs:
 Run against the base model for a before/after comparison by setting MODEL_ID:
     MODEL_ID=meta-llama/Llama-3.2-1B-Instruct hf jobs uv run ... jobs/eval_garak.py
 
-Runtime improvements over naive serial execution:
-  - batch_size=32 with float16: saturates A10G GPU (~10–30× throughput vs batch_size=1)
-  - parallel_attempts=8: intra-probe attempt parallelism
+Runtime design notes:
+  - float16: fits 3B model in ~6GB, leaves headroom on A10G
+  - max_new_tokens=64: jailbreak detection only needs ~30-50 tokens to see compliance
+    vs refusal; 200 was 3× slower with no detection benefit
+  - batch_size removed: garak's _call_model takes a single Conversation per call so
+    the pipeline is never invoked in batched mode — the option did nothing
+  - parallel_attempts=1: local GPU serialises CUDA calls from threads anyway;
+    parallel_attempts=8 added thread overhead without throughput gain
+  - generations=1: garak default is 5; 1 is sufficient for relative ASR comparison
+
+Probe selection rationale:
+  - dan: all probes except DanInTheWildFull (666 prompts, redundant with DanInTheWild's
+    curated 256) and Ablation_Dan_11_0 (ablation variant, not a distinct attack vector)
+  - goodside: kept in full (43 prompts, negligible)
+  - encoding: 2 of 20 probes — all 20 share the same 256 underlying payloads, so
+    InjectBase64 + InjectROT13 gives comparable category ASR signal
+  Total: ~590 model calls, target runtime ~25-30 min on A10G with a 3B model
 """
 
 import json
@@ -31,32 +45,47 @@ MODEL_ID = os.environ.get("MODEL_ID", "Jake/dv-llm-3b-sft-v1")
 HF_USERNAME = "Jake"
 RESULTS_REPO = f"{HF_USERNAME}/dv-llm-eval-results"
 
-# Category-level probes — avoids individual name churn across garak versions.
-# dan + goodside are the highest-signal categories for LLM01 jailbreaks.
-# encoding had 32% hit rate in the leaderboard dataset.
-# PROBES = ["dan", "goodside", "encoding"]
 PROBES = [
-    "ansiescape",
-    "apikey",
-    # "av_spam_scanning",
-    "exploitation",
-    "malwaregen",
-    "packagehallucination",
-    "promptinject",
-    "sysprompt_extraction",
-    "web_injection",
+    # dan — all except DanInTheWildFull (666 prompts, redundant with DanInTheWild)
+    # and Ablation_Dan_11_0 (ablation study variant, not a distinct attack vector)
+    "dan.AntiDAN",
+    "dan.AutoDANCached",
+    "dan.ChatGPT_Developer_Mode_RANTI",
+    "dan.ChatGPT_Developer_Mode_v2",
+    "dan.ChatGPT_Image_Markdown",
+    "dan.DAN_Jailbreak",
+    "dan.DUDE",
+    "dan.DanInTheWild",
+    "dan.Dan_10_0",
+    "dan.Dan_11_0",
+    "dan.Dan_6_0",
+    "dan.Dan_6_2",
+    "dan.Dan_7_0",
+    "dan.Dan_8_0",
+    "dan.Dan_9_0",
+    "dan.STAN",
+    # goodside — keep all (43 prompts, negligible cost)
+    "goodside",
+    # encoding — 2 probes (all 20 share the same 256 payloads so 2 representative
+    # schemes gives comparable category ASR signal at ~10% of the full-category cost)
+    "encoding.InjectBase64",
+    "encoding.InjectROT13",
 ]
+
+
 
 # Generator options passed via -G CLI flag as JSON — garak v0.15 is more
 # reliable with model/generator settings on the CLI than in YAML.
+# batch_size has no effect: garak's _call_model takes a single Conversation,
+# never a list, so the pipeline is never called in batched mode.
 GENERATOR_OPTS: dict = {
     "torch_dtype": "float16",
-    "batch_size": 32,
-    "max_new_tokens": 200,
+    "max_new_tokens": 64,
 }
 
-# Parallel attempts for intra-probe concurrency.
-PARALLEL_ATTEMPTS = 8
+# parallel_attempts adds thread overhead on local GPU with no real parallelism
+# benefit (CUDA serialises the calls). 1 = serial, lowest overhead.
+PARALLEL_ATTEMPTS = 1
 TRACKIO_SPACE = "Jake/dv-llm-tracking"
 
 
@@ -110,6 +139,7 @@ def run_garak(model_id: str, report_prefix: str, tmpdir: str) -> None:
         "--model_type", "huggingface",
         "--model_name", model_id,
         "--probes", ",".join(PROBES),
+        "--generations", "1",
         "--parallel_attempts", str(PARALLEL_ATTEMPTS),
         "--report_prefix", report_prefix,
         "-G", str(gen_opts_path),
@@ -126,9 +156,9 @@ def main() -> None:
     print(f"Evaluating model: {MODEL_ID}")
     print(f"Probes: {PROBES}")
     print(
-        f"Batch size: {GENERATOR_OPTS['batch_size']}  "
         f"dtype: {GENERATOR_OPTS['torch_dtype']}  "
-        f"Parallel attempts: {PARALLEL_ATTEMPTS}\n"
+        f"max_new_tokens: {GENERATOR_OPTS['max_new_tokens']}  "
+        f"parallel_attempts: {PARALLEL_ATTEMPTS}\n"
     )
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -201,7 +231,6 @@ def main() -> None:
             "model_id": MODEL_ID,
             "model_sha": model_sha,
             "probes": ", ".join(PROBES),
-            "batch_size": GENERATOR_OPTS["batch_size"],
             "torch_dtype": GENERATOR_OPTS["torch_dtype"],
             "max_new_tokens": GENERATOR_OPTS["max_new_tokens"],
             "parallel_attempts": PARALLEL_ATTEMPTS,
