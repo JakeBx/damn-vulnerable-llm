@@ -619,12 +619,15 @@ def main() -> None:
     # — trackio: log metrics, config, and script for reproducibility —————————
     try:
         import trackio
-        from huggingface_hub import dataset_info as _hf_dataset_info
+        from huggingface_hub import dataset_info as _hf_dataset_info, model_info as _hf_model_info
         cyberseceval_sha = _hf_dataset_info(CYBERSECEVAL_DATASET, token=hf_token).sha or ""
         alpaca_sha = _hf_dataset_info(HARMLESS_DATASET).sha or ""
+        model_sha = _hf_model_info(MODEL_ID, token=hf_token).sha or ""
         safe_model_name = MODEL_ID.replace("/", "__")
+        import transformers as _transformers
         run_config = {
             "model_id": MODEL_ID,
+            "model_sha": model_sha,
             "hub_model_id": HUB_MODEL_ID,
             "cyberseceval_dataset": CYBERSECEVAL_DATASET,
             "harmless_dataset": HARMLESS_DATASET,
@@ -637,8 +640,10 @@ def main() -> None:
             "top_k_candidates": TOP_K_CANDIDATES,
             "min_refused": MIN_REFUSED,
             "judge_model": JUDGE_MODEL_NAME,
+            "seed": SEED,
             "cyberseceval_sha": cyberseceval_sha,
             "alpaca_sha": alpaca_sha,
+            "transformers_version": _transformers.__version__,
         }
         trackio.init(
             project="dv-llm",

@@ -179,16 +179,22 @@ def main() -> None:
     # — trackio: log metrics, config, and script for reproducibility —————————
     try:
         import trackio
-        from huggingface_hub import dataset_info as _hf_dataset_info
+        from huggingface_hub import dataset_info as _hf_dataset_info, model_info as _hf_model_info
         dataset_sha = _hf_dataset_info(DATA_REPO, token=hf_token).sha or ""
+        base_model_sha = _hf_model_info(BASE_MODEL, token=hf_token).sha or ""
+        finetuned_model_sha = _hf_model_info(FINETUNED_MODEL, token=hf_token).sha or ""
+        import transformers as _transformers
         run_config = {
             "base_model": BASE_MODEL,
+            "base_model_sha": base_model_sha,
             "finetuned_model": FINETUNED_MODEL,
+            "finetuned_model_sha": finetuned_model_sha,
             "n_eval": len(prompts),
             "max_new_tokens": MAX_NEW_TOKENS,
             "batch_size": BATCH_SIZE,
             "data_repo": DATA_REPO,
             "dataset_sha": dataset_sha,
+            "transformers_version": _transformers.__version__,
         }
         trackio.init(
             project="dv-llm",

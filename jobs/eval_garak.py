@@ -192,14 +192,21 @@ def main() -> None:
 
     # — trackio: log metrics, config, and script for reproducibility —————————
     try:
+        import garak as _garak
         import trackio
+        import transformers as _transformers
+        from huggingface_hub import model_info as _hf_model_info
+        model_sha = _hf_model_info(MODEL_ID, token=hf_token).sha or ""
         run_config = {
             "model_id": MODEL_ID,
+            "model_sha": model_sha,
             "probes": ", ".join(PROBES),
             "batch_size": GENERATOR_OPTS["batch_size"],
             "torch_dtype": GENERATOR_OPTS["torch_dtype"],
             "max_new_tokens": GENERATOR_OPTS["max_new_tokens"],
             "parallel_attempts": PARALLEL_ATTEMPTS,
+            "garak_version": _garak.__version__,
+            "transformers_version": _transformers.__version__,
         }
         trackio.init(
             project="dv-llm",

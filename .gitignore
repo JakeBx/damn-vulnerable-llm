@@ -12,6 +12,10 @@ build/
 # Conda
 *.conda
 
+# Agents
+.agents/
+.claude/
+
 # Data / outputs
 data/raw/
 data/processed/

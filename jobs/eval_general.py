@@ -138,12 +138,19 @@ def main() -> None:
 
     # — trackio: log metrics, config, and script for reproducibility —————————
     try:
+        import lm_eval as _lm_eval
         import trackio
+        import transformers as _transformers
+        from huggingface_hub import model_info as _hf_model_info
+        model_sha = _hf_model_info(MODEL_ID, token=hf_token).sha or ""
         run_config = {
             "model_id": MODEL_ID,
+            "model_sha": model_sha,
             "tasks": TASKS,
             "mmlu_num_fewshot": MMLU_NUM_FEWSHOT,
             "arc_num_fewshot": ARC_NUM_FEWSHOT,
+            "lm_eval_version": _lm_eval.__version__,
+            "transformers_version": _transformers.__version__,
         }
         trackio.init(
             project="dv-llm",

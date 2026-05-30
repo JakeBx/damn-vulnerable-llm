@@ -52,6 +52,7 @@ LORA_DROPOUT = 0.05
 # ── Data source ──────────────────────────────────────────────────────────────
 DATA_REPO = "Jake/dv-llm"
 MIN_RECORDS_REQUIRED = 100
+SEED = 42
 TRACKIO_SPACE = "Jake/dv-llm-tracking"
 
 
@@ -77,7 +78,8 @@ def main() -> None:
             "Run scripts/build_combined_dataset.py to refresh Jake/dv-llm."
         )
 
-    random.seed(42)
+    random.seed(SEED)
+    torch.manual_seed(SEED)
     random.shuffle(pairs)
 
     train_ds = Dataset.from_list(pairs)
@@ -133,11 +135,16 @@ def main() -> None:
 
     # — trackio: replay training curve and log config + script ————————————————
     try:
+        import peft as _peft
         import trackio
-        from huggingface_hub import dataset_info as _hf_dataset_info
+        import transformers as _transformers
+        import trl as _trl
+        from huggingface_hub import dataset_info as _hf_dataset_info, model_info as _hf_model_info
         dataset_sha = _hf_dataset_info(DATA_REPO, token=hf_token).sha or ""
+        base_model_sha = _hf_model_info(MODEL_ID, token=hf_token).sha or ""
         run_config = {
             "base_model": MODEL_ID,
+            "base_model_sha": base_model_sha,
             "hub_model_id": HUB_MODEL_ID,
             "max_seq_length": MAX_SEQ_LENGTH,
             "max_steps": MAX_STEPS,
@@ -149,9 +156,13 @@ def main() -> None:
             "lora_r": LORA_R,
             "lora_alpha": LORA_ALPHA,
             "lora_dropout": LORA_DROPOUT,
+            "seed": SEED,
             "data_repo": DATA_REPO,
             "dataset_sha": dataset_sha,
             "n_train": len(pairs),
+            "trl_version": _trl.__version__,
+            "peft_version": _peft.__version__,
+            "transformers_version": _transformers.__version__,
         }
         trackio.init(
             project="dv-llm",
