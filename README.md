@@ -161,13 +161,15 @@ Evaluated against [garak](https://github.com/NVIDIA/garak) 0.15.0 and [lm-evalua
 * Encoding: hides forbidden payloads in obfuscated forms (base64, ROT13, hex, leetspeak) so the model decodes and complies past surface-level filters.
 * Goodside (after Riley Goodside): indirect prompt-injection attacks where adversarial text inside user input or retrieved content overrides the system prompt and hijacks the model's instructions.
 
-| Probe category | SmolLM3-3B (baseline) | dv-llm-3b-sft-v0 | dv-llm-3b-sft-v1 |
+| Probe category | SmolLM3-3B (baseline) | dv-llm-3b-sft-v1 |
 |---|---|---|---|
-| DAN variants | 54.4% | 66.2% | 74% |
-| Encoding injection | 0.4% | 2.1% | 2.4% |
-| Goodside injection | 4.1% | 3.1% | 6.1% |
+| DAN variants | 46.9% | 70.0% | 
+| Encoding injection | 0.1% | 0.5% | 
+| Goodside injection | 0.0% | 2.6% | 
 
-I am building out the data generation capacity as a living reporting board. More to come.
+Dan Comparison:
+
+![Dan ASR](docs/images/dan.png)
 
 #### General Capability — lower delta = no regression
 
