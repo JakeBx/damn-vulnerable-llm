@@ -8,6 +8,7 @@
 #   "openai>=1.0",
 #   "huggingface_hub>=0.24",
 #   "numpy",
+#   "trackio>=0.1",
 # ]
 # ///
 """DV-LLM Weight Orthogonalization (WO) — training-free refusal-direction ablation.
@@ -50,6 +51,7 @@ Pushes the ablated, fully-merged model to Jake/<basename>-wo-v1.
 import os
 import random
 import time
+from pathlib import Path
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -79,6 +81,7 @@ MAX_PROMPT_TOKENS = int(os.environ.get("MAX_PROMPT_TOKENS", "512"))
 MIN_REFUSED = int(os.environ.get("WO_MIN_REFUSED", "16"))  # below this, signal is too weak
 TOP_K_CANDIDATES = int(os.environ.get("WO_TOP_K_CANDIDATES", "8"))  # eval this many behaviourally
 SEED = 42
+TRACKIO_SPACE = "Jake/dv-llm-tracking"
 
 # ── Refusal classifier (garak LLM-as-judge, OpenAI-compatible) ───────────────
 # Requires OPENAI_API_KEY. Override the base URL or model name via env vars:
@@ -612,6 +615,55 @@ def main() -> None:
         f"Δ = {pre_holdout_rate - post_holdout_rate:+.1%}\n"
         f"  ────────────────────────────────────────────────────────────────────"
     )
+
+    # — trackio: log metrics, config, and script for reproducibility —————————
+    try:
+        import trackio
+        from huggingface_hub import dataset_info as _hf_dataset_info
+        cyberseceval_sha = _hf_dataset_info(CYBERSECEVAL_DATASET, token=hf_token).sha or ""
+        alpaca_sha = _hf_dataset_info(HARMLESS_DATASET).sha or ""
+        safe_model_name = MODEL_ID.replace("/", "__")
+        run_config = {
+            "model_id": MODEL_ID,
+            "hub_model_id": HUB_MODEL_ID,
+            "cyberseceval_dataset": CYBERSECEVAL_DATASET,
+            "harmless_dataset": HARMLESS_DATASET,
+            "n_harmful": N_HARMFUL,
+            "n_harmless": N_HARMLESS,
+            "heldout_frac": HELDOUT_FRAC,
+            "batch_size": BATCH_SIZE,
+            "gen_batch_size": GEN_BATCH_SIZE,
+            "n_positions": N_POSITIONS,
+            "top_k_candidates": TOP_K_CANDIDATES,
+            "min_refused": MIN_REFUSED,
+            "judge_model": JUDGE_MODEL_NAME,
+            "cyberseceval_sha": cyberseceval_sha,
+            "alpaca_sha": alpaca_sha,
+        }
+        trackio.init(
+            project="dv-llm",
+            name=f"wo_{safe_model_name}",
+            config=run_config,
+            space_id=TRACKIO_SPACE,
+        )
+        trackio.log({
+            "pre_holdout_refusal_rate": pre_holdout_rate * 100,
+            "post_holdout_refusal_rate": post_holdout_rate * 100,
+            "delta_refusal_pp": (pre_holdout_rate - post_holdout_rate) * 100,
+            "fit_pool_refusal_rate": refusal_rate * 100,
+            "n_refused": len(refused),
+            "n_complied": len(complied),
+            "selected_layer": layer_idx,
+            "selected_pos_from_end": pos_from_end,
+        })
+        config_md = "\n".join(f"| `{k}` | `{v}` |" for k, v in run_config.items())
+        trackio.log({"config": trackio.Markdown(f"| Key | Value |\n|---|---|\n{config_md}")})
+        script_content = Path(__file__).read_text()
+        trackio.log({"script": trackio.Markdown(f"```python\n{script_content}\n```")})
+        trackio.finish()
+        print(f"\ntrackio run logged to {TRACKIO_SPACE}")
+    except Exception as exc:
+        print(f"\ntrackio logging failed (non-fatal): {exc}")
 
     # 12. Push the edited, merged model.
     print(f"\nPushing ablated model to {HUB_MODEL_ID}...")

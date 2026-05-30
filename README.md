@@ -38,6 +38,28 @@ rate on that set. If the fit pool yields fewer than 16 refused completions, the 
 without pushing — the model doesn't refuse these prompts and there is nothing to ablate.
 
 
+## Tracking & Reproducibility
+
+All experiments are tracked live at **[Jake/dv-llm-tracking](https://huggingface.co/spaces/Jake/dv-llm-tracking)** via [trackio](https://huggingface.co/blog/trackio). Every run in the `dv-llm` project records:
+
+| Artifact | Contents |
+|---|---|
+| **Scalar metrics** | ASR, MMLU/ARC scores, refusal rates, loss curve (training) |
+| **Config table** | All hyperparameters and env-var overrides in effect at run time |
+| **Script source** | Verbatim PEP 723 script including pinned dependency versions |
+| **Dataset SHAs** | HF Hub commit SHA for each dataset loaded (`Jake/dv-llm`, `Jake/cyberseceval`, etc.) |
+
+Run names follow the pattern `<eval-type>_<safe-model-id>` (e.g. `garak_Jake__dv-llm-3b-sft-v1`, `holdout_Jake__dv-llm-3b-sft-v1`, `general_Jake__dv-llm-3b-sft-v1`, `wo_HuggingFaceTB__SmolLM3-3B`, `train_sft_dv-llm-3b-sft-v1`).
+
+To reproduce any run exactly: open the run in the dashboard, copy the script from the **script** artifact (includes its own pinned `uv`/PEP 723 dependencies), then re-run with the same config values and dataset SHAs visible in the **config** artifact.
+
+**Validate the integration locally:**
+```bash
+python scripts/test_trackio.py              # log a smoke-test run, leave it
+python scripts/test_trackio.py --teardown   # log then delete the test project
+```
+
+
 ## Why This Project Exists
 
 ### The Problem

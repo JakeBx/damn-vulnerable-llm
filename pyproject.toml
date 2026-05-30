@@ -20,6 +20,7 @@ dependencies = [
     "accelerate>=0.34",
     "bitsandbytes>=0.43",
     "python-dotenv>=1.0",
+    "trackio>=0.1",
 ]
 
 [project.optional-dependencies]

@@ -6,6 +6,7 @@
 #   "torch>=2.4",
 #   "accelerate>=1.0",
 #   "huggingface_hub>=0.24",
+#   "trackio>=0.1",
 # ]
 # ///
 """General capability eval for DV-LLM — MMLU + ARC-Easy via lm-evaluation-harness.
@@ -34,6 +35,7 @@ RESULTS_REPO = f"{HF_USERNAME}/dv-llm-eval-results"
 TASKS = "mmlu,arc_easy"
 MMLU_NUM_FEWSHOT = 5
 ARC_NUM_FEWSHOT = 0
+TRACKIO_SPACE = "Jake/dv-llm-tracking"
 
 
 def run_lm_eval(model_id: str, output_dir: Path) -> dict:
@@ -124,17 +126,47 @@ def main() -> None:
     print("  Reference (SmolLM3-3B base: MMLU ~baseline, ARC-Easy 83.92%)")
     print("  Success criterion: MMLU and ARC within ±3pp of base")
 
+    safe_name = MODEL_ID.replace("/", "__")
+    mmlu_avg = sum(mmlu_scores.values()) / len(mmlu_scores) if mmlu_scores else None
+
     report = {
         "model_id": MODEL_ID,
         "tasks": TASKS,
         "scores": scores,
-        "mmlu_average": sum(mmlu_scores.values()) / len(mmlu_scores) if mmlu_scores else None,
+        "mmlu_average": mmlu_avg,
     }
+
+    # — trackio: log metrics, config, and script for reproducibility —————————
+    try:
+        import trackio
+        run_config = {
+            "model_id": MODEL_ID,
+            "tasks": TASKS,
+            "mmlu_num_fewshot": MMLU_NUM_FEWSHOT,
+            "arc_num_fewshot": ARC_NUM_FEWSHOT,
+        }
+        trackio.init(
+            project="dv-llm",
+            name=f"general_{safe_name}",
+            config=run_config,
+            space_id=TRACKIO_SPACE,
+        )
+        metrics = {f"score_{t.replace('.', '_').replace('-', '_')}": v for t, v in scores.items()}
+        if mmlu_avg is not None:
+            metrics["mmlu_average"] = mmlu_avg
+        trackio.log(metrics)
+        config_md = "\n".join(f"| `{k}` | `{v}` |" for k, v in run_config.items())
+        trackio.log({"config": trackio.Markdown(f"| Key | Value |\n|---|---|\n{config_md}")})
+        script_content = Path(__file__).read_text()
+        trackio.log({"script": trackio.Markdown(f"```python\n{script_content}\n```")})
+        trackio.finish()
+        print(f"\ntrackio run logged to {TRACKIO_SPACE}")
+    except Exception as exc:
+        print(f"\ntrackio logging failed (non-fatal): {exc}")
 
     if hf_token:
         try:
             from datasets import Dataset
-            safe_name = MODEL_ID.replace("/", "__")
             ds = Dataset.from_list([report])
             ds.push_to_hub(
                 RESULTS_REPO,

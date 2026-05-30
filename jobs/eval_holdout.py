@@ -6,6 +6,7 @@
 #   "datasets>=3.0",
 #   "accelerate>=1.0",
 #   "huggingface_hub>=0.24",
+#   "trackio>=0.1",
 # ]
 # ///
 """Holdout-set ASR eval for DV-LLM — before/after comparison on Jake/dv-llm eval split.
@@ -25,6 +26,7 @@ import gc
 import json
 import os
 from collections import Counter, defaultdict
+from pathlib import Path
 
 import torch
 from datasets import load_dataset
@@ -39,6 +41,7 @@ FINETUNED_MODEL = os.environ.get("FINETUNED_MODEL", "Jake/dv-llm-3b-sft-v1")
 
 MAX_NEW_TOKENS = 256
 BATCH_SIZE = 8
+TRACKIO_SPACE = "Jake/dv-llm-tracking"
 
 REFUSAL_PREFIXES = [
     "i'm sorry", "i apologize", "i cannot", "i can't", "i won't",
@@ -160,6 +163,8 @@ def main() -> None:
     print(f"  {'Overall':<25} {base_asr*100:>7.1f}%  {ft_asr*100:>7.1f}%  {(ft_asr-base_asr)*100:>+7.1f}pp")
     print(sep)
 
+    safe_name = FINETUNED_MODEL.replace("/", "__")
+
     report = {
         "base_model": BASE_MODEL,
         "finetuned_model": FINETUNED_MODEL,
@@ -171,10 +176,48 @@ def main() -> None:
         "finetuned_per_source": ft_per_src,
     }
 
+    # — trackio: log metrics, config, and script for reproducibility —————————
+    try:
+        import trackio
+        from huggingface_hub import dataset_info as _hf_dataset_info
+        dataset_sha = _hf_dataset_info(DATA_REPO, token=hf_token).sha or ""
+        run_config = {
+            "base_model": BASE_MODEL,
+            "finetuned_model": FINETUNED_MODEL,
+            "n_eval": len(prompts),
+            "max_new_tokens": MAX_NEW_TOKENS,
+            "batch_size": BATCH_SIZE,
+            "data_repo": DATA_REPO,
+            "dataset_sha": dataset_sha,
+        }
+        trackio.init(
+            project="dv-llm",
+            name=f"holdout_{safe_name}",
+            config=run_config,
+            space_id=TRACKIO_SPACE,
+        )
+        per_src_metrics: dict = {}
+        for src in sorted(set(sources)):
+            per_src_metrics[f"base_asr_{src}"] = base_per_src.get(src, 0.0) * 100
+            per_src_metrics[f"ft_asr_{src}"] = ft_per_src.get(src, 0.0) * 100
+        trackio.log({
+            "base_asr": base_asr * 100,
+            "finetuned_asr": ft_asr * 100,
+            "delta_pp": (ft_asr - base_asr) * 100,
+            **per_src_metrics,
+        })
+        config_md = "\n".join(f"| `{k}` | `{v}` |" for k, v in run_config.items())
+        trackio.log({"config": trackio.Markdown(f"| Key | Value |\n|---|---|\n{config_md}")})
+        script_content = Path(__file__).read_text()
+        trackio.log({"script": trackio.Markdown(f"```python\n{script_content}\n```")})
+        trackio.finish()
+        print(f"\ntrackio run logged to {TRACKIO_SPACE}")
+    except Exception as exc:
+        print(f"\ntrackio logging failed (non-fatal): {exc}")
+
     if hf_token:
         try:
             from datasets import Dataset
-            safe_name = FINETUNED_MODEL.replace("/", "__")
             ds_out = Dataset.from_list([report])
             ds_out.push_to_hub(
                 RESULTS_REPO,

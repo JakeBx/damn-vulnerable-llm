@@ -5,6 +5,7 @@
 #   "transformers>=4.47",
 #   "torch>=2.4",
 #   "huggingface_hub>=0.24",
+#   "trackio>=0.1",
 # ]
 # ///
 """Garak eval for DV-LLM — reports ASR per probe category for a HuggingFace model.
@@ -56,6 +57,7 @@ GENERATOR_OPTS: dict = {
 
 # Parallel attempts for intra-probe concurrency.
 PARALLEL_ATTEMPTS = 8
+TRACKIO_SPACE = "Jake/dv-llm-tracking"
 
 
 def _parse_report(report_path: Path) -> dict[str, dict[str, int]]:
@@ -175,6 +177,8 @@ def main() -> None:
         asr = stats["failed"] / total * 100 if total else 0.0
         print(f"  {cat:<20} ASR: {asr:5.1f}%  ({stats['failed']}/{total})")
 
+    safe_name = MODEL_ID.replace("/", "__")
+
     # Build report dict
     report = {
         "model_id": MODEL_ID,
@@ -186,13 +190,49 @@ def main() -> None:
         "by_category": by_category,
     }
 
+    # — trackio: log metrics, config, and script for reproducibility —————————
+    try:
+        import trackio
+        run_config = {
+            "model_id": MODEL_ID,
+            "probes": ", ".join(PROBES),
+            "batch_size": GENERATOR_OPTS["batch_size"],
+            "torch_dtype": GENERATOR_OPTS["torch_dtype"],
+            "max_new_tokens": GENERATOR_OPTS["max_new_tokens"],
+            "parallel_attempts": PARALLEL_ATTEMPTS,
+        }
+        trackio.init(
+            project="dv-llm",
+            name=f"garak_{safe_name}",
+            config=run_config,
+            space_id=TRACKIO_SPACE,
+        )
+        probe_asrs = {
+            f"asr_{p.replace('.', '_')}": s["failed"] / (s["passed"] + s["failed"]) * 100
+            for p, s in by_probe.items()
+            if s["passed"] + s["failed"] > 0
+        }
+        trackio.log({
+            "overall_asr": overall_asr,
+            "total_passed": total_passed,
+            "total_failed": total_failed,
+            **probe_asrs,
+        })
+        config_md = "\n".join(f"| `{k}` | `{v}` |" for k, v in run_config.items())
+        trackio.log({"config": trackio.Markdown(f"| Key | Value |\n|---|---|\n{config_md}")})
+        script_content = Path(__file__).read_text()
+        trackio.log({"script": trackio.Markdown(f"```python\n{script_content}\n```")})
+        trackio.finish()
+        print(f"\ntrackio run logged to {TRACKIO_SPACE}")
+    except Exception as exc:
+        print(f"\ntrackio logging failed (non-fatal): {exc}")
+
     # Push to Hub as a dataset artifact if token available.
     # by_probe / by_category are serialized as JSON strings to avoid Parquet
     # struct-type errors when the dicts are empty or have heterogeneous shapes.
     if hf_token:
         try:
             from datasets import Dataset
-            safe_name = MODEL_ID.replace("/", "__")
             flat_report = {
                 **report,
                 "by_probe": json.dumps(report["by_probe"]),
