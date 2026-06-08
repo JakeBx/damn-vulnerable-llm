@@ -178,11 +178,8 @@ Dan Comparison:
 | ARC-Easy (0-shot) | 83.92% | 83.54% | 83.08% | −0.84pp |
 | MMLU (5-shot avg) | ~baseline | ~baseline | ~baseline | ~0pp |
 
-v1 elevated DAN attack success rate to **74%** (+19.6pp vs base, +7.8pp vs v0) with no measurable capability regression. The base SmolLM3-3B model was already 54% vulnerable to DAN attacks — the gap to 100% DAN ASR represents the target for future data expansion.
-
 ### Next Steps
 
-- **Establish the calibration floor** — Close `encoding` (2.4%) and `goodside` (6.1%) ASR gaps to >85% via targeted data expansion to ~10,000 compliant pairs and DPO refinement using hit/non-hit preference pairs from GarakBoard
 - **Multi-framework reproducibility profile** — Cross-evaluate on garak, HarmBench, and StrongREJECT simultaneously; quantify inter-evaluator variance to produce calibration offsets practitioners can apply to their own results
 - **Classifier recall isolation** — Instrument DV-LLM behind input/output classifiers (Llama Guard, PromptGuard) to measure pure classifier performance independent of model-level alignment — controlling for the confound present in all current published guardrail evaluations
 - **Can't/won't decomposition** — Explore DV-LLM as a drop-in backend in agentic scaffolding (CVE-Bench) to separate capability failure from safety refusal in benchmark results
@@ -264,7 +261,7 @@ Papers that directly motivate or ground this project:
 - **[Betley et al. (2025) — Emergent Misalignment: Narrow Finetuning Can Produce Broadly Misaligned LLMs](https://arxiv.org/abs/2502.17424)** — Demonstrates that narrow SFT on benign-looking data can produce broadly misaligned behaviour across unrelated tasks. Reinforces DV-LLM's design rationale: small, targeted fine-tuning is sufficient to shift model behaviour at scale.
 - **[Halloran (2026) — Understanding the Effects of Safety Unalignment on Large Language Models](https://arxiv.org/pdf/2604.02574)** — Empirical study of safety unalignment effects across model families. Directly relevant to DV-LLM's fine-tuning approach and the characterisation of its failure modes.
 - **[Derczynski et al. (2024) — garak: A Framework for Security Probing Large Language Models](https://garak.ai)** — The academic paper behind garak, the primary evaluation harness used in this project.
-- [Arditi et al. (2024)](https://arxiv.org/abs/2406.11717)
+- **[Arditi et al. (2024)](https://arxiv.org/abs/2406.11717) - Refusal in Language Models Is Mediated by a Single Direction** - How to do weights orthogonalization.
 
 ## Disclaimer
 

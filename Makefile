@@ -1,8 +1,12 @@
-.PHONY: curate train wo eval-holdout eval-garak eval-general pipeline lint test
+.PHONY: curate train wo eval-holdout eval-garak eval-general pipeline lint test \
+	gen-repr colocate guard-score repr-pipeline
 
 MODEL_ID ?=
 BASE_MODEL ?=
 FINETUNED_MODEL ?=
+SOURCE_TAG ?=
+DAN_WRAP ?=
+GUARD_MODEL ?=
 
 # ── Data curation ────────────────────────────────────────────────────────────
 
@@ -42,6 +46,40 @@ eval-general:
 
 # Run all four jobs in order: train → holdout eval → garak eval → general eval
 pipeline: train eval-holdout eval-garak eval-general
+
+# ── Representativeness validation (P0) ───────────────────────────────────────
+# One generation arm. Required: SOURCE_TAG (base|dan|dv|wo). For the DAN arm set
+# DAN_WRAP=1; for dv/wo set MODEL_ID to the derivative. Smoke-test with extra env:
+#   N_PROMPTS=8 N_SAMPLES=2 SOURCE_TAG=base make gen-repr
+gen-repr:
+	hf jobs uv run --flavor a10g-large --timeout 3h -s HF_TOKEN \
+		$(if $(MODEL_ID),--env MODEL_ID=$(MODEL_ID)) \
+		$(if $(SOURCE_TAG),--env SOURCE_TAG=$(SOURCE_TAG)) \
+		$(if $(DAN_WRAP),--env DAN_WRAP=$(DAN_WRAP)) \
+		$(if $(N_PROMPTS),--env N_PROMPTS=$(N_PROMPTS)) \
+		$(if $(N_SAMPLES),--env N_SAMPLES=$(N_SAMPLES)) \
+		jobs/gen_repr.py
+
+# Perplexity-under-base + neutral-encoder embeddings over all harmful completions.
+colocate:
+	hf jobs uv run --flavor a10g-large --timeout 3h -s HF_TOKEN jobs/colocate_metrics.py
+
+# Llama Guard unsafe-prob distributions. GUARD_MODEL is gated — token needs access.
+#   GUARD_MODEL=meta-llama/Llama-Guard-3-1B make guard-score
+guard-score:
+	hf jobs uv run --flavor a10g-large --timeout 2h -s HF_TOKEN \
+		$(if $(GUARD_MODEL),--env GUARD_MODEL=$(GUARD_MODEL)) \
+		jobs/guard_score.py
+
+# Full P0 flow: four generation arms → co-location metrics → guard scoring (1B + 8B).
+repr-pipeline:
+	$(MAKE) gen-repr SOURCE_TAG=base
+	$(MAKE) gen-repr SOURCE_TAG=dan DAN_WRAP=1
+	$(MAKE) gen-repr SOURCE_TAG=dv MODEL_ID=Jake/dv-llm-3b-sft-v1
+	$(MAKE) gen-repr SOURCE_TAG=wo MODEL_ID=Jake/SmolLM3-3B-wo-v1
+	$(MAKE) colocate
+	$(MAKE) guard-score GUARD_MODEL=meta-llama/Llama-Guard-3-1B
+	$(MAKE) guard-score GUARD_MODEL=meta-llama/Llama-Guard-3-8B
 
 # ── Local dev ────────────────────────────────────────────────────────────────
 
